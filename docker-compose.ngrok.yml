@@ -1,0 +1,15 @@
+services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: fuzzie-ngrok
+    environment:
+      NGROK_AUTHTOKEN: 35oweY6ykKAMHKTC1VvAr6Dcfj9_7niscA64N4o1q8KZRsJjZ
+    command: tls localhost:3000
+    ports:
+      - "4040:4040"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
