@@ -1,3 +1,4 @@
+"use server"
 import { db } from "@/lib/client"
 import { currentUser } from "@clerk/nextjs"
 import { Client } from '@notionhq/client'

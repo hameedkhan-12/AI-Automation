@@ -1,8 +1,21 @@
 import { AccordionContent } from "@/components/ui/accordion";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConnectionProviderProps } from "@/lib/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { onContentChange } from "@/lib/editor-utils";
+import { ConnectionProviderProps, nodeMapper } from "@/lib/types";
 import { EditorState } from "@/providers/editor-provider";
-import React from "react";
+import axios from "axios";
+import React, { useEffect } from "react";
+import { toast } from "sonner";
+import GoogleFileDetails from "./google-file-details";
+import GoogleDriveFiles from "./google-drive-files";
+import ActionButton from "./action-button";
 
 export interface Option {
   value: string;
@@ -28,16 +41,89 @@ const ContentBasedOnTitle = ({
   nodeConnection,
   newState,
 }: Props) => {
-
   const { selectedNode } = newState.editor;
   const title = selectedNode.data.title;
+
+  useEffect(() => {
+    const reqGoogle = async () => {
+      const response: { data: { message: { files: any } } } = await axios.get(
+        "/api/drive"
+      );
+
+      if (response) {
+        console.log(response.data.message.files[0]);
+        toast.message("Fetched File");
+        setFile(response.data.message.files[0]);
+      } else {
+        toast.error("Something went wrong");
+      }
+    };
+    reqGoogle();
+  }, []);
+
+  //@ts-ignore
+  const nodeConnectionType: any = nodeConnection[nodeMapper[title]];
+  if (!nodeConnectionType) return <p> Not Connected</p>;
+
+  const isConnected =
+    title === "Google Drive"
+      ? !nodeConnection.isLoading
+      : !!nodeConnectionType[
+          `${
+            title === "Slack"
+              ? "slackAccessToken"
+              : title === "Discord"
+              ? "webhookUrl"
+              : title === "Notion"
+              ? "accessToken"
+              : ""
+          }`
+        ];
+
+  if (!isConnected) return <p> Not Connected</p>;
   return (
     <AccordionContent>
       <Card>
-        <CardHeader>
-          <CardTitle>Discord</CardTitle>
-          <CardDescription>Welcome to the discord</CardDescription>
-        </CardHeader>
+        {title === "Discord" && (
+          <CardHeader>
+            <CardTitle>{nodeConnectionType.webhookName}</CardTitle>
+            <CardDescription>{nodeConnectionType.guildName}</CardDescription>
+          </CardHeader>
+        )}
+
+        <div className="flex flex-col gap-3 px-6 py-3 pb-20">
+          <p>{title === "Notion" ? "Values to be stored" : "Message"}</p>
+          <Input
+            type="text"
+            value={nodeConnectionType.content}
+            onChange={(event) => onContentChange(nodeConnection, title, event)}
+          />
+
+          {JSON.stringify(file) !== "{}" && title !== 'Google Drive' && (
+            <Card>
+              <CardContent>
+                <div>
+                  <CardDescription></CardDescription>
+                  <div>
+                    <GoogleFileDetails 
+                    nodeConnection={nodeConnection}
+                    gFile={file}
+                    title={title}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {title === 'Google Drive' && <GoogleDriveFiles />}
+
+          <ActionButton
+          currentService = {title}
+          nodeConnection={nodeConnection}
+          channels={selectedSlackChannels}
+          setChannels={setSelectedSlackChannels}
+          />
+        </div>
       </Card>
     </AccordionContent>
   );
