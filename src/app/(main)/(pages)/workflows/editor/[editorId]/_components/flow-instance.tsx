@@ -18,8 +18,8 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const { nodeConnection } = useNodeConnections();
 
-  const onAutomateFlow = useCallback(() => {
-    const flows: string[] = [];
+  const onAutomateFlow = async() => {
+    const flows: any[] = [];
     const connectedEdges = edges?.map((edge) => edge.target);
 
     connectedEdges?.map((target) => {
@@ -28,7 +28,10 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
       });
     });
     setIsFlow(flows);
-  }, [edges, nodes]);
+  }
+  useEffect(() => {
+    onAutomateFlow();
+  }, [edges]);
 
   const onFlowAutomation = useCallback(async () => {
     try {
@@ -77,9 +80,6 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
     }
   }, [pathname]);
 
-  useEffect(() => {
-    onAutomateFlow();
-  }, [edges]);
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-3 p-4">

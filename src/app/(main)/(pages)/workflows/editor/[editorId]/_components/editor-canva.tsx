@@ -25,13 +25,12 @@ import ReactFlow, {
 import { toast } from "sonner";
 import { v4 } from "uuid";
 import EditorCanvasCardSingle from "./editor-canvas-card-simple";
-import { Email } from "@clerk/nextjs/server";
 import FlowInstance from "./flow-instance";
 import EditorCanvasSidebar from "./editor-canvas-sidebar";
 import { usePathname } from "next/navigation";
 import { onGetNodesEdges } from "../_actions/workflow-connection";
 
-const initialNodes: Node<EditorCanvasCardType>[] = [];
+const initialNodes: EditorNodeType[] = [];
 const initialEdges: { id: string; source: string; target: string }[] = [];
 
 const EditorCanvas = () => {
@@ -39,9 +38,8 @@ const EditorCanvas = () => {
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
-  const [nodes, setNodes] =
-    useState<Node<EditorCanvasCardType>[]>(initialNodes);
-  const [edges, setEdges] = useState();
+  const [nodes, setNodes] = useState(initialNodes);
+  const [edges, setEdges] = useState(initialEdges);
   const pathname = usePathname();
 
   const onDrop = useCallback(
@@ -68,7 +66,7 @@ const EditorCanvas = () => {
         y: event.clientY,
       });
 
-      const newNode: Node<EditorCanvasCardType> = {
+      const newNode = {
         id: v4(),
         type,
         position,
@@ -81,7 +79,7 @@ const EditorCanvas = () => {
           type,
         },
       };
-      setNodes((node) => [...node, newNode]);
+      setNodes((nodes) => nodes.concat(newNode));
     },
     [reactFlowInstance, state]
   );
@@ -93,17 +91,18 @@ const EditorCanvas = () => {
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((prevNodes) => applyNodeChanges(changes, prevNodes));
-  }, []);
+  }, [setNodes]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     //@ts-ignore
     setEdges((prevEdges) => applyEdgeChanges(changes, prevEdges));
-  }, []);
+  }, [setEdges]);
 
   const onConnect = useCallback((params: Edge | Connection) => {
     //@ts-ignore
     setEdges((edge) => addEdge(params, edge));
   }, []);
+
 
   const handleClickCanvas = () => {
     dispatch({
@@ -162,25 +161,27 @@ const EditorCanvas = () => {
     if (response) {
       setEdges(JSON.parse(response.edges));
       setNodes(JSON.parse(response.nodes));
-    }else{
-      toast("Workflow not found")
+      setIsWorkflowLoading(false);
+    } else {
+      toast("Workflow not found");
     }
     setIsWorkflowLoading(false);
   };
 
   useEffect(() => {
     onGetWorkflow();
-  },[])
+  }, []);
   return (
     <ResizablePanelGroup direction="horizontal">
       <ResizablePanel defaultSize={70}>
         <div className="flex h-full items-center justify-center">
-          <div className="relative"
-          style={{
-            width: "100%",
-            height: "100%",
-            paddingBottom: "70px"
-          }}
+          <div
+            className="relative"
+            style={{
+              width: "100%",
+              height: "100%",
+              paddingBottom: "70px",
+            }}
           >
             {isWorkflowLoading ? (
               <div className="absolute flex h-full w-full items-center justify-center">
@@ -223,7 +224,12 @@ const EditorCanvas = () => {
                   zoomable
                   pannable
                 />
-                <Background />
+                <Background 
+                // @ts-ignore
+                variant="dots"
+                gap={12}
+                size={1}
+                />
               </ReactFlow>
             )}
           </div>

@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -25,7 +24,6 @@ type Props = {
 };
 const WorkflowForm = ({ subTitle, title }: Props) => {
   const { setClose } = useModal();
-  const [isLoading, setIsLoading] = useState(false);
   const form = useForm<z.infer<typeof WorkflowFormSchema>>({
     mode: "onChange",
     resolver: zodResolver(WorkflowFormSchema),
@@ -44,6 +42,7 @@ const WorkflowForm = ({ subTitle, title }: Props) => {
     }
     setClose()
   }
+  const isLoading = form.formState.isLoading;
   return (
     <Card className="w-full max-w-2xl border-none">
       {title && subTitle && (

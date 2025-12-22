@@ -22,7 +22,7 @@ import RenderConnectionAccordion from "./render-connection-accordion";
 import RenderOutPutAccordion from "./render-output-accordion";
 import { useNodeConnections } from "@/providers/connections-provider";
 import { useFuzzieStore } from "@/store";
-import { fetchBotSlackChannels, onConnections } from "@/lib/editor-utils";
+import { fetchBotSlackChannels, onConnections, onDragStart } from "@/lib/editor-utils";
 
 type Props = {
   nodes: EditorNodeType[];
@@ -66,6 +66,7 @@ const EditorCanvasSidebar = ({ nodes }: Props) => {
                 key={cardKey}
                 draggable
                 className="w-full cursor-grab border-black bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900"
+                onDragStart={event => onDragStart(event, cardKey as EditorCanvasTypes)}
               >
                 <CardHeader className="flex flex-row items-center gap-4 p-4">
                   <EditorCanvasIconHelper type={cardKey as EditorCanvasTypes} />

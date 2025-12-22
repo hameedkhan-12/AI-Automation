@@ -30,7 +30,7 @@ const Workflow = ({ name, description, id, publish }: Props) => {
   return (
     <Card className="flex w-full items-center justify-between">
       <CardHeader className="flex flex-col gap-4">
-        <Link href={`/workflows/editor/`}>
+        <Link href={`/workflows/editor/${id}`}>
           <div className="flex flex-row gap-4">
             <Image
               src={"/googledrive.png"}
@@ -67,7 +67,7 @@ const Workflow = ({ name, description, id, publish }: Props) => {
           </div>
         </Link>
       </CardHeader>
-      <div>
+      <div className="flex flex-col items-center gap-2 p-4">
         <Label>
             {publish! ? "Published" : "Unpublished"}
         </Label>
