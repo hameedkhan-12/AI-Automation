@@ -99,29 +99,28 @@ const ContentBasedOnTitle = ({
             onChange={(event) => onContentChange(nodeConnection, title, event)}
           />
 
-          {JSON.stringify(file) !== "{}" && title !== 'Google Drive' && (
-            <Card>
-              <CardContent>
-                <div>
-                  <CardDescription></CardDescription>
-                  <div>
-                    <GoogleFileDetails 
-                    nodeConnection={nodeConnection}
-                    gFile={file}
-                    title={title}
+          {JSON.stringify(file) !== "{}" && title !== "Google Drive" && (
+            <Card className="w-full">
+              <CardContent className="px-2 py-3">
+                <div className="flex flex-col gap-4">
+                  <CardDescription>Drive File</CardDescription>
+                  <div className="flex flex-wrap gap-2">
+                    <GoogleFileDetails
+                      nodeConnection={nodeConnection}
+                      gFile={file}
+                      title={title}
                     />
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-          {title === 'Google Drive' && <GoogleDriveFiles />}
-
+          {title === "Google Drive" && <GoogleDriveFiles />}
           <ActionButton
-          currentService = {title}
-          nodeConnection={nodeConnection}
-          channels={selectedSlackChannels}
-          setChannels={setSelectedSlackChannels}
+            currentService={title}
+            nodeConnection={nodeConnection}
+            channels={selectedSlackChannels}
+            setChannels={setSelectedSlackChannels}
           />
         </div>
       </Card>
