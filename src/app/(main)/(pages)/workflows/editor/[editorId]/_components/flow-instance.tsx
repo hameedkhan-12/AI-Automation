@@ -57,7 +57,7 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
     } finally {
       setIsSaving(false);
     }
-  }, [nodes, edges, isFlow, pathname]);
+  }, [nodes, edges, isFlow, pathname, nodeConnection]);
 
   const onPublishWorkflow = useCallback(async () => {
     try {
