@@ -1,51 +1,54 @@
-import axios from "axios";
-import React, { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { getGoogleListener } from "../_actions/workflow-connection";
-import { Card, CardDescription } from "@/components/ui/card";
-import { CardContainer } from "@/components/global/3d-card";
-import { Button } from "@/components/ui/button";
+'use client'
+import React, { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import axios from 'axios'
+import { getGoogleListener } from '../../../_actions/workflow-connections'
+import { Button } from '@/components/ui/button'
+import { Card, CardDescription } from '@/components/ui/card'
+import { CardContainer } from '@/components/global/3d-card'
 
-const GoogleDriveFiles = () => {
-  const [loading, setLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+type Props = {}
+
+const GoogleDriveFiles = (props: Props) => {
+  const [loading, setLoading] = useState(false)
+  const [isListening, setIsListening] = useState(false)
 
   const reqGoogle = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get("/api/drive-activity");
-      if (response) {
-        toast.message(response.data);
-        setLoading(false);
-        setIsListening(true);
-      }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
+    setLoading(true)
+    const response = await axios.get('/api/drive-activity')
+    if (response) {
+      toast.message(response.data)
+      setLoading(false)
+      setIsListening(true)
     }
-  };
+    setIsListening(false)
+  }
 
   const onListener = async () => {
-    const listener = await getGoogleListener();
+    const listener = await getGoogleListener()
     if (listener?.googleResourceId !== null) {
-      setIsListening(true);
+      setIsListening(true)
     }
-  };
+  }
 
   useEffect(() => {
-    onListener();
-  }, []);
+    onListener()
+  }, [])
+
   return (
-    <div>
+    <div className="flex flex-col gap-3 pb-6">
       {isListening ? (
-        <Card>
+        <Card className="py-3">
           <CardContainer>
             <CardDescription>Listening...</CardDescription>
           </CardContainer>
         </Card>
       ) : (
-        <Button>
+        <Button
+          variant="outline"
+          disabled={loading}
+          onClick={reqGoogle}
+        >
           {loading ? (
             <div className="absolute flex h-full w-full items-center justify-center">
               <svg
@@ -66,12 +69,12 @@ const GoogleDriveFiles = () => {
               </svg>
             </div>
           ) : (
-            "Create Listener"
+            'Create Listener'
           )}
         </Button>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default GoogleDriveFiles;
+export default GoogleDriveFiles

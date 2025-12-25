@@ -1,17 +1,17 @@
-import { currentUser } from "@clerk/nextjs";
-import React from "react";
-import { onDiscordConnect } from "./_actions/discord-connection";
-import { onSlackConnect } from "./_actions/slack-connection";
-import { onNotionConnect } from "./_actions/notion-connection";
-import { getUserData } from "./_actions/get-user";
-import { CONNECTIONS } from "@/lib/constant";
-import ConnectionCard from "./_components/connection-card";
+import { CONNECTIONS } from '@/lib/constant'
+import React from 'react'
+import ConnectionCard from './_components/connection-card'
+import { currentUser } from '@clerk/nextjs'
+import { onDiscordConnect } from './_actions/discord-connection'
+import { onNotionConnect } from './_actions/notion-connection'
+import { onSlackConnect } from './_actions/slack-connection'
+import { getUserData } from './_actions/get-user'
 
 type Props = {
-  searchParams?: { [key: string]: string | undefined };
-};
+  searchParams?: { [key: string]: string | undefined }
+}
 
-const page = async (props: Props) => {
+const Connections = async (props: Props) => {
   const {
     webhook_id,
     webhook_name,
@@ -20,9 +20,9 @@ const page = async (props: Props) => {
     guild_name,
     channel_id,
     access_token,
-    workspace_id,
     workspace_name,
     workspace_icon,
+    workspace_id,
     database_id,
     app_id,
     authed_user_id,
@@ -32,30 +32,31 @@ const page = async (props: Props) => {
     team_id,
     team_name,
   } = props.searchParams ?? {
-    webhook_id: "",
-    webhook_name: "",
-    webhook_url: "",
-    guild_id: "",
-    guild_name: "",
-    channel_id: "",
-    access_token: "",
-    workspace_id: "",
-    workspace_name: "",
-    workspace_icon: "",
-    database_id: "",
-    app_id: "",
-    authed_user_id: "",
-    authed_user_token: "",
-    slack_access_token: "",
-    bot_user_id: "",
-    team_id: "",
-    team_name: "",
-  };
+    webhook_id: '',
+    webhook_name: '',
+    webhook_url: '',
+    guild_id: '',
+    guild_name: '',
+    channel_id: '',
+    access_token: '',
+    workspace_name: '',
+    workspace_icon: '',
+    workspace_id: '',
+    database_id: '',
+    app_id: '',
+    authed_user_id: '',
+    authed_user_token: '',
+    slack_access_token: '',
+    bot_user_id: '',
+    team_id: '',
+    team_name: '',
+  }
 
-  const user = await currentUser();
-  if (!user) return null;
+  const user = await currentUser()
+  if (!user) return null
 
   const onUserConnections = async () => {
+    console.log(database_id)
     await onDiscordConnect(
       channel_id!,
       webhook_id!,
@@ -64,7 +65,7 @@ const page = async (props: Props) => {
       user.id,
       guild_name!,
       guild_id!
-    );
+    )
     await onNotionConnect(
       access_token!,
       workspace_id!,
@@ -72,7 +73,8 @@ const page = async (props: Props) => {
       workspace_name!,
       database_id!,
       user.id
-    );
+    )
+
     await onSlackConnect(
       app_id!,
       authed_user_id!,
@@ -82,47 +84,48 @@ const page = async (props: Props) => {
       team_id!,
       team_name!,
       user.id
-    );
+    )
+
     const connections: any = {}
-  
+
     const user_info = await getUserData(user.id)
-    console.log("USER INFO",user_info);
-  
-    user_info?.connections.map(connection => {
-      connections[connection.type] = true;
+
+    //get user info with all connections
+    user_info?.connections.map((connection) => {
+      connections[connection.type] = true
       return (connections[connection.type] = true)
     })
 
-    return {
-        ...connections, 'Google Drive': true
-    }
-  };
+    // Google Drive connection will always be true
+    // as it is given access during the login process
+    return { ...connections, 'Google Drive': true }
+  }
 
-  const connections = await onUserConnections();
-  console.log("CONNNNNECTIONs",connections);
+  const connections = await onUserConnections()
+
   return (
     <div className="relative flex flex-col gap-4">
-      <h1 className="sticky bg-background/50 top-0 z-10 flex items-center justify-between border-b p-6 text-4xl backdrop-blur-lg">
+      <h1 className="sticky top-0 z-[10] flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
         Connections
       </h1>
       <div className="relative flex flex-col gap-4">
         <section className="flex flex-col gap-4 p-6 text-muted-foreground">
           Connect all your apps directly from here. You may need to connect
-          these apps regularly to refresh verifcation.
-          {CONNECTIONS.map(connection => (
-            <ConnectionCard 
-            key={connection.title}
-            description={connection.description}
-            title={connection.title}
-            icon={connection.image}
-            type={connection.title}
-            connected={connections}
+          these apps regularly to refresh verification
+          {CONNECTIONS.map((connection) => (
+            <ConnectionCard
+              key={connection.title}
+              description={connection.description}
+              title={connection.title}
+              icon={connection.image}
+              type={connection.title}
+              connected={connections}
             />
           ))}
         </section>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default page;
+export default Connections

@@ -1,28 +1,31 @@
 import React from 'react'
-import MoreCredits from './more-credit';
-import { onGetWorkflows } from '../_actions/workflow-connections';
-import Workflow from './workflow';
+import Workflow from './workflow'
+import { onGetWorkflows } from '../_actions/workflow-connections'
+import MoreCredits from './more-creadits'
 
+type Props = {}
 
-const Workflows = async () => {
-    const workflows = await onGetWorkflows();
+const Workflows = async (props: Props) => {
+  const workflows = await onGetWorkflows()
   return (
-    <div>
-        <section>
-            <MoreCredits />
-            {workflows?.length ? (
-                workflows.map(workflow => (
-                    <Workflow 
-                    key={workflow.id}
-                    {...workflow}
-                    />
-                ))
-            ) : (
-                <p>No Workflows Found</p>
-            )}
-        </section>
+    <div className="relative flex flex-col gap-4">
+      <section className="flex flex-col m-2">
+        <MoreCredits />
+        {workflows?.length ? (
+          workflows.map((flow) => (
+            <Workflow
+              key={flow.id}
+              {...flow}
+            />
+          ))
+        ) : (
+          <div className="mt-28 flex text-muted-foreground items-center justify-center">
+            No Workflows
+          </div>
+        )}
+      </section>
     </div>
   )
 }
 
-export default Workflows;
+export default Workflows

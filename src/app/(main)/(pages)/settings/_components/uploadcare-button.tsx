@@ -1,14 +1,13 @@
 'use client'
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef } from 'react'
 import * as LR from '@uploadcare/blocks'
 import { useRouter } from 'next/navigation'
 
 type Props = {
-  onUpload?: (url: string) => Promise<any>
+  onUpload: (e: string) => any
 }
 
 LR.registerBlocks(LR)
-
 
 const UploadCareButton = ({ onUpload }: Props) => {
   const router = useRouter()
@@ -16,23 +15,15 @@ const UploadCareButton = ({ onUpload }: Props) => {
     typeof LR.UploadCtxProvider.prototype & LR.UploadCtxProvider
   >(null)
 
-  const handleUpload = useCallback(async (e: any) => {
-    const url = e.detail.cdnUrl
-    if (onUpload) {
-      const file = await onUpload(url)
+  useEffect(() => {
+    const handleUpload = async (e: any) => {
+      const file = await onUpload(e.detail.cdnUrl)
       if (file) {
         router.refresh()
       }
     }
-  }, [onUpload, router])
-
-  useEffect(() => {
-    ctxProviderRef.current?.addEventListener('file-upload-success', handleUpload)
-    
-    return () => {
-      ctxProviderRef.current?.removeEventListener('file-upload-success', handleUpload)
-    }
-  }, [handleUpload])
+    ctxProviderRef.current.addEventListener('file-upload-success', handleUpload)
+  }, [])
 
   return (
     <div>

@@ -1,71 +1,27 @@
+import { ConnectionProviderProps } from '@/providers/connections-provider'
 import { z } from 'zod'
-import { Node, Edge } from 'reactflow'
 
 export const EditUserProfileSchema = z.object({
-    name: z.string().min(1, "Required"),
-    email: z.string().min(1, "Required"),
+  email: z.string().email('Required'),
+  name: z.string().min(1, 'Required'),
 })
-
-export type ConnectionTypes = 'Slack' | 'Discord' | 'Google Drive' | 'Notion'
-
-export type ConnectionProviderProps = {
-  discordNode: {
-    webhookURL: string
-    content: string
-    webhookName: string
-    guildName: string
-  }
-  setDiscordNode: React.Dispatch<React.SetStateAction<any>>
-  googleNode: {}[]
-  setGoogleNode: React.Dispatch<React.SetStateAction<any>>
-  notionNode: {
-    accessToken: string
-    databaseId: string
-    workspaceName: string
-    content: ''
-  }
-  workflowTemplate: {
-    discord?: string
-    notion?: string
-    slack?: string
-  }
-  setNotionNode: React.Dispatch<React.SetStateAction<any>>
-  slackNode: {
-    appId: string
-    authedUserId: string
-    authedUserToken: string
-    slackAccessToken: string
-    botUserId: string
-    teamId: string
-    teamName: string
-    content: string
-  }
-  setSlackNode: React.Dispatch<React.SetStateAction<any>>
-  setWorkflowTemplate: React.Dispatch<
-    React.SetStateAction<{
-      discord?: string
-      notion?: string
-      slack?: string
-    }>
-  >
-  isLoading: boolean
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
-}
-
-export type Connection = {
-    title: ConnectionTypes
-    description: string
-    image: string
-    connectionKey: keyof ConnectionProviderProps
-    accessTokenKey?: string
-    alwaysTrue?: boolean
-    slackSpecial?: boolean
-}
 
 export const WorkflowFormSchema = z.object({
-  name: z.string().min(1, "Required"),
-  description: z.string().min(1, "Required"),
+  name: z.string().min(1, 'Required'),
+  description: z.string().min(1, 'Required'),
 })
+
+export type ConnectionTypes = 'Google Drive' | 'Notion' | 'Slack' | 'Discord'
+
+export type Connection = {
+  title: ConnectionTypes
+  description: string
+  image: string
+  connectionKey: keyof ConnectionProviderProps
+  accessTokenKey?: string
+  alwaysTrue?: boolean
+  slackSpecial?: boolean
+}
 
 export type EditorCanvasTypes =
   | 'Email'
@@ -89,27 +45,34 @@ export type EditorCanvasCardType = {
   type: EditorCanvasTypes
 }
 
-// Use ReactFlow's Node type with your custom data
-export type EditorNodeType = Node<EditorCanvasCardType>
+export type EditorNodeType = {
+  id: string
+  type: EditorCanvasCardType['type']
+  position: {
+    x: number
+    y: number
+  }
+  data: EditorCanvasCardType
+}
 
-// Alias for clarity
 export type EditorNode = EditorNodeType
-
-// Use ReactFlow's Edge type
-export type EditorEdge = Edge
 
 export type EditorActions =
   | {
       type: 'LOAD_DATA'
       payload: {
-        elements: EditorNodeType[]
-        edges: EditorEdge[]
+        elements: EditorNode[]
+        edges: {
+          id: string
+          source: string
+          target: string
+        }[]
       }
     }
   | {
       type: 'UPDATE_NODE'
       payload: {
-        elements: EditorNodeType[]
+        elements: EditorNode[]
       }
     }
   | { type: 'REDO' }
