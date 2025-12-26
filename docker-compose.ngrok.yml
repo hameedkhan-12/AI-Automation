@@ -1,7 +1,7 @@
 services:
   ngrok:
     image: ngrok/ngrok:latest
-    container_name: fuzzie-ngrok
+    container_name: automation-ngrok
     environment:
       NGROK_AUTHTOKEN: 35oweY6ykKAMHKTC1VvAr6Dcfj9_7niscA64N4o1q8KZRsJjZ
     command: tls localhost:3000
