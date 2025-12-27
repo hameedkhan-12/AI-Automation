@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import React from 'react'
 import Stripe from 'stripe'
 import { currentUser } from '@clerk/nextjs'
