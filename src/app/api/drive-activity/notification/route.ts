@@ -1,12 +1,13 @@
+export const runtime = 'nodejs'
+
 import { postContentToWebHook } from '@/app/(main)/(pages)/connections/_actions/discord-connection'
 import { onCreateNewPageInDatabase } from '@/app/(main)/(pages)/connections/_actions/notion-connection'
 import { postMessageToSlack } from '@/app/(main)/(pages)/connections/_actions/slack-connection'
 import { db } from '@/lib/db'
 import axios from 'axios'
 import { headers } from 'next/headers'
-import { NextRequest } from 'next/server'
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   console.log('🔴 Changed')
   const headersList = headers()
   let channelResourceId
