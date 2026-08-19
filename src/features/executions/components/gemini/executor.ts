@@ -4,7 +4,7 @@ import { generateText } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { NodeExecutor } from "@/features/executions/types";
 import { geminiChannel } from "@/inngest/channels/gemini";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context) => {
@@ -110,11 +110,11 @@ export const geminiExecutor: NodeExecutor<GeminiData> = async ({
       },
     );
 
-    const text = 
-      steps[0].content[0].type === "text" 
+    const text =
+      steps[0].content[0].type === "text"
         ? steps[0].content[0].text
         : "";
-    
+
     await publish(
       geminiChannel().status({
         nodeId,
@@ -129,7 +129,7 @@ export const geminiExecutor: NodeExecutor<GeminiData> = async ({
       },
     }
   } catch (error) {
-     await publish(
+    await publish(
       geminiChannel().status({
         nodeId,
         status: "error",

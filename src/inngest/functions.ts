@@ -1,8 +1,8 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { topologicalSort } from "./utils";
-import { ExecutionStatus, NodeType } from "@/generated/prisma";
+import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
 import { httpRequestChannel } from "./channels/http-request";
 import { manualTriggerChannel } from "./channels/manual-trigger";
@@ -15,7 +15,7 @@ import { discordChannel } from "./channels/discord";
 import { slackChannel } from "./channels/slack";
 
 export const executeWorkflow = inngest.createFunction(
-  { 
+  {
     id: "execute-workflow",
     retries: process.env.NODE_ENV === "production" ? 3 : 0,
     onFailure: async ({ event, step }) => {
@@ -29,7 +29,7 @@ export const executeWorkflow = inngest.createFunction(
       });
     },
   },
-  { 
+  {
     event: "workflows/execute.workflow",
     channels: [
       httpRequestChannel(),

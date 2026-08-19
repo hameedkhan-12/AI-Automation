@@ -4,7 +4,7 @@ import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { NodeExecutor } from "@/features/executions/types";
 import { openAiChannel } from "@/inngest/channels/openai";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context) => {
@@ -110,11 +110,11 @@ export const openAiExecutor: NodeExecutor<OpenAiData> = async ({
       },
     );
 
-    const text = 
-      steps[0].content[0].type === "text" 
+    const text =
+      steps[0].content[0].type === "text"
         ? steps[0].content[0].text
         : "";
-    
+
     await publish(
       openAiChannel().status({
         nodeId,
@@ -129,7 +129,7 @@ export const openAiExecutor: NodeExecutor<OpenAiData> = async ({
       },
     }
   } catch (error) {
-     await publish(
+    await publish(
       openAiChannel().status({
         nodeId,
         status: "error",

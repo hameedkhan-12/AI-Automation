@@ -1,12 +1,12 @@
 import { generateSlug } from "random-word-slugs";
-import prisma from "@/lib/db";
 import type { Node, Edge } from "@xyflow/react";
 import { createTRPCRouter, premiumProcedure, protectedProcedure } from "@/trpc/init";
 import z from "zod";
 import { PAGINATION } from "@/config/constants";
-import { NodeType } from "@/generated/prisma";
+import { NodeType } from "@/generated/prisma/enums";
 import { inngest } from "@/inngest/client";
 import { sendWorkflowExecution } from "@/inngest/utils";
+import { prisma } from "@/lib/db";
 
 export const workflowsRouter = createTRPCRouter({
   execute: protectedProcedure
@@ -52,8 +52,8 @@ export const workflowsRouter = createTRPCRouter({
     }),
   update: protectedProcedure
     .input(
-      z.object({ 
-        id: z.string(), 
+      z.object({
+        id: z.string(),
         nodes: z.array(
           z.object({
             id: z.string(),
@@ -177,7 +177,7 @@ export const workflowsRouter = createTRPCRouter({
         prisma.workflow.findMany({
           skip: (page - 1) * pageSize,
           take: pageSize,
-          where: { 
+          where: {
             userId: ctx.auth.user.id,
             name: {
               contains: search,

@@ -1,4 +1,4 @@
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import z from "zod";
 import { PAGINATION } from "@/config/constants";
@@ -8,9 +8,9 @@ export const executionsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .query(({ ctx, input }) => {
       return prisma.execution.findUniqueOrThrow({
-        where: { 
-          id: input.id, 
-          workflow: { 
+        where: {
+          id: input.id,
+          workflow: {
             userId: ctx.auth.user.id
           }
         },
@@ -42,7 +42,7 @@ export const executionsRouter = createTRPCRouter({
         prisma.execution.findMany({
           skip: (page - 1) * pageSize,
           take: pageSize,
-          where: { 
+          where: {
             workflow: {
               userId: ctx.auth.user.id,
             },

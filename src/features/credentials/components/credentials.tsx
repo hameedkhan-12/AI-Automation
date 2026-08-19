@@ -1,13 +1,13 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { 
+import {
   EmptyView,
-  EntityContainer, 
-  EntityHeader, 
-  EntityItem, 
-  EntityList, 
-  EntityPagination, 
+  EntityContainer,
+  EntityHeader,
+  EntityItem,
+  EntityList,
+  EntityPagination,
   EntitySearch,
   ErrorView,
   LoadingView
@@ -16,8 +16,8 @@ import { useRemoveCredential, useSuspenseCredentials } from "../hooks/use-creden
 import { useRouter } from "next/navigation";
 import { useCredentialsParams } from "../hooks/use-credentials-params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
-import type { Credential } from "@/generated/prisma";
-import { CredentialType } from "@/generated/prisma";
+import type { Credential } from "@/generated/prisma/client";
+import { CredentialType } from "@/generated/prisma/enums";
 import Image from "next/image";
 
 export const CredentialsSearch = () => {
@@ -122,7 +122,7 @@ const credentialLogos: Record<CredentialType, string> = {
 
 export const CredentialItem = ({
   data,
-}: { 
+}: {
   data: Credential
 }) => {
   const removeCredential = useRemoveCredential();

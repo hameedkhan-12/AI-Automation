@@ -4,7 +4,7 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import type { NodeExecutor } from "@/features/executions/types";
 import { anthropicChannel } from "@/inngest/channels/anthropic";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context) => {
@@ -110,11 +110,11 @@ export const anthropicExecutor: NodeExecutor<AnthropicData> = async ({
       },
     );
 
-    const text = 
-      steps[0].content[0].type === "text" 
+    const text =
+      steps[0].content[0].type === "text"
         ? steps[0].content[0].text
         : "";
-    
+
     await publish(
       anthropicChannel().status({
         nodeId,
@@ -129,7 +129,7 @@ export const anthropicExecutor: NodeExecutor<AnthropicData> = async ({
       },
     }
   } catch (error) {
-     await publish(
+    await publish(
       anthropicChannel().status({
         nodeId,
         status: "error",

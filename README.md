@@ -13,7 +13,7 @@ docker compose up -d db
 The default local database connection is:
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5434/nodebase"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5434/flux"
 ```
 
 ### 2) Configure environment variables

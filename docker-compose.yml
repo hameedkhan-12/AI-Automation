@@ -1,10 +1,10 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: nodebase-db
+    container_name: flux-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: nodebase
+      POSTGRES_DB: flux
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d nodebase"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d flux"]
       interval: 10s
       timeout: 5s
       retries: 5
