@@ -13,6 +13,12 @@ import { openAiChannel } from "./channels/openai";
 import { anthropicChannel } from "./channels/anthropic";
 import { discordChannel } from "./channels/discord";
 import { slackChannel } from "./channels/slack";
+import { marketDataTriggerChannel } from "./channels/market-data-trigger";
+import { indicatorChannel } from "./channels/indicator";
+import { orderChannel } from "./channels/order";
+import { BacktestMarketDataProvider, buildBacktestSummary } from "@/features/trading/providers/backtest";
+import { getExchangeAdapter } from "@/features/trading/adapters/registry";
+import type { Trade } from "@/features/trading/providers/backtest";
 
 export const executeWorkflow = inngest.createFunction(
   {
@@ -41,6 +47,9 @@ export const executeWorkflow = inngest.createFunction(
       anthropicChannel(),
       discordChannel(),
       slackChannel(),
+      marketDataTriggerChannel(),
+      indicatorChannel(),
+      orderChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -114,5 +123,130 @@ export const executeWorkflow = inngest.createFunction(
       workflowId,
       result: context,
     };
+  },
+);
+
+/**
+ * executeBacktest — fast in-process backtest loop.
+ *
+ * Deliberately does NOT use step.run() per candle (no Inngest checkpoint per
+ * tick). Running thousands of candles through the step system would be
+ * prohibitively slow. Instead:
+ *   - Loops all candles in-process, calling executors directly.
+ *   - Collects trades emitted by ORDER nodes.
+ *   - Writes ONE summary Execution record at the end.
+ *
+ * Tradeoff: if the function crashes mid-loop, no partial results are saved.
+ * Acceptable for a portfolio demo; note in README.
+ */
+export const executeBacktest = inngest.createFunction(
+  {
+    id: "execute-backtest",
+    retries: 0, // backtest is idempotent by design — safe to re-run
+  },
+  { event: "trading/backtest.start" },
+  async ({ event, step }) => {
+    const { workflowId, userId, symbol, exchange, interval, from, to } =
+      event.data as {
+        workflowId: string;
+        userId: string;
+        symbol: string;
+        exchange: string;
+        interval: string;
+        from: string;
+        to: string;
+      };
+
+    // 1. Fetch historical candles (via adapter — caches in Postgres)
+    const adapter = getExchangeAdapter(exchange);
+    await step.run("fetch-historical-candles", async () => {
+      await adapter.fetchHistoricalCandles(
+        symbol,
+        new Date(from),
+        new Date(to),
+        interval,
+      );
+    });
+
+    // 2. Load workflow nodes
+    const sortedNodes = await step.run("prepare-workflow", async () => {
+      const workflow = await prisma.workflow.findUniqueOrThrow({
+        where: { id: workflowId },
+        include: { nodes: true, connections: true },
+      });
+      return topologicalSort(workflow.nodes, workflow.connections);
+    });
+
+    // 3. Create an Execution record
+    const execution = await step.run("create-execution", async () => {
+      return prisma.execution.create({
+        data: { workflowId, inngestEventId: event.id! },
+      });
+    });
+
+    // 4. Run backtest loop in-process (no step.run per candle)
+    const result = await step.run("backtest-loop", async () => {
+      const provider = new BacktestMarketDataProvider(
+        exchange, symbol, interval,
+        new Date(from), new Date(to),
+      );
+
+      const trades: Trade[] = [];
+      const allCandles: import("@/features/trading/adapters/types").Candle[] = [];
+      let context: Record<string, unknown> = {};
+
+      // Stub publish for backtest (no realtime during replay)
+      const noopPublish = async () => { };
+      // Stub step for backtest executors (no Inngest checkpoints in inner loop)
+      const backtestStep = {
+        run: async (_id: string, fn: () => Promise<unknown>) => fn(),
+        sleep: async () => { },
+        waitForEvent: async () => null,
+        sendEvent: async () => { },
+        invoke: async () => null,
+      } as unknown as import("inngest").GetStepTools<import("inngest").Inngest.Any>;
+
+      let candle = await provider.getNextCandle();
+      while (candle !== null) {
+        allCandles.push(candle);
+        context = { ...context, candle };
+
+        for (const node of sortedNodes) {
+          const executor = getExecutor(node.type as NodeType);
+          context = await executor({
+            data: node.data as Record<string, unknown>,
+            nodeId: node.id,
+            userId,
+            context,
+            step: backtestStep,
+            publish: noopPublish,
+          });
+
+          // Collect trades placed by ORDER nodes
+          if (node.type === NodeType.ORDER && context.__lastOrder) {
+            const order = context.__lastOrder as Trade;
+            trades.push(order);
+          }
+        }
+
+        candle = await provider.getNextCandle();
+      }
+
+      return buildBacktestSummary(10_000, allCandles, trades);
+    });
+
+    // 5. Write summary to Execution record
+    await step.run("complete-execution", async () => {
+      return prisma.execution.update({
+        where: { id: execution.id },
+        data: {
+          status: ExecutionStatus.SUCCESS,
+          completedAt: new Date(),
+          output: result,
+        },
+      });
+    });
+
+    return { workflowId, executionId: execution.id, summary: result };
   },
 );

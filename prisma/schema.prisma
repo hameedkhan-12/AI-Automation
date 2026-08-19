@@ -93,6 +93,8 @@ enum CredentialType {
   OPENAI
   ANTHROPIC
   GEMINI
+  ALPACA
+  BINANCE
 }
 
 model Workflow {
@@ -120,6 +122,9 @@ enum NodeType {
   OPENAI
   DISCORD
   SLACK
+  MARKET_DATA_TRIGGER
+  INDICATOR
+  ORDER
 }
 
 model Node {
@@ -184,3 +189,68 @@ model Execution {
 
   output Json?
 }
+
+// ─── Trading Models ─────────────────────────────────────────────────────────
+
+// Stores rolling indicator state per node.
+// Hot path: Redis key `indicator:{nodeId}:prices` (capped list).
+// Cold path: this table — synced every ~100 ticks as an audit trail.
+// Accepted tradeoff: up to 100 ticks of indicator state can be lost on crash.
+model IndicatorState {
+  id         String   @id @default(cuid())
+  nodeId     String
+  workflowId String
+  key        String   // e.g. "sma_20", "prices"
+  value      Json     // rolling price buffer or current computed value
+  updatedAt  DateTime @updatedAt
+
+  @@unique([nodeId, key])
+}
+
+// Current paper positions for a user.
+// Upserted on every ORDER node fill.
+model PaperPosition {
+  id        String   @id @default(cuid())
+  userId    String
+  symbol    String
+  quantity  Float
+  avgPrice  Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, symbol])
+}
+
+// Full order history for paper trades.
+model PaperOrder {
+  id          String   @id @default(cuid())
+  userId      String
+  workflowId  String
+  symbol      String
+  side        String   // "BUY" | "SELL"
+  quantity    Float
+  filledPrice Float?
+  status      String   // "FILLED" | "PENDING" | "REJECTED"
+  // Idempotency key passed to Alpaca as client_order_id.
+  // Format: "{executionId}-{nodeId}" — prevents duplicate fills on retry.
+  clientOrderId String? @unique
+  createdAt   DateTime @default(now())
+}
+
+// Cached OHLCV data per exchange/symbol/interval.
+// Populated on first backtest run, reused on subsequent runs.
+// Source of truth for BacktestMarketDataProvider.
+model HistoricalCandle {
+  id        String   @id @default(cuid())
+  exchange  String
+  symbol    String
+  interval  String
+  timestamp DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+
+  @@unique([exchange, symbol, interval, timestamp])
+}
+

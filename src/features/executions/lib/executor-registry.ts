@@ -9,6 +9,9 @@ import { openAiExecutor } from "../components/openai/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
 import { discordExecutor } from "../components/discord/executor";
 import { slackExecutor } from "../components/slack/executor";
+import { marketDataTriggerExecutor } from "@/features/trading/components/market-data-trigger/executor";
+import { indicatorExecutor } from "@/features/trading/components/indicator/executor";
+import { orderExecutor } from "@/features/trading/components/order/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: manualTriggerExecutor,
@@ -21,6 +24,9 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.OPENAI]: openAiExecutor,
   [NodeType.DISCORD]: discordExecutor,
   [NodeType.SLACK]: slackExecutor,
+  [NodeType.MARKET_DATA_TRIGGER]: marketDataTriggerExecutor,
+  [NodeType.INDICATOR]: indicatorExecutor,
+  [NodeType.ORDER]: orderExecutor,
 };
 
 export const getExecutor = (type: NodeType): NodeExecutor => {

@@ -5,6 +5,9 @@ import { useReactFlow } from "@xyflow/react";
 import {
   GlobeIcon,
   MousePointerIcon,
+  TrendingUpIcon,
+  ActivityIcon,
+  ArrowUpDownIcon,
 } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
@@ -83,6 +86,27 @@ const executionNodes: NodeTypeOption[] = [
     label: "Slack",
     description: "Send a message to Slack",
     icon: "/logos/slack.svg",
+  },
+];
+
+const tradingNodes: NodeTypeOption[] = [
+  {
+    type: NodeType.MARKET_DATA_TRIGGER,
+    label: "Market Data",
+    description: "Triggers on market ticks (live or backtest)",
+    icon: TrendingUpIcon,
+  },
+  {
+    type: NodeType.INDICATOR,
+    label: "Indicator",
+    description: "Computes SMA / EMA / RSI / MACD",
+    icon: ActivityIcon,
+  },
+  {
+    type: NodeType.ORDER,
+    label: "Order",
+    description: "Places a paper order via Alpaca",
+    icon: ArrowUpDownIcon,
   },
 ];
 
@@ -226,6 +250,34 @@ export function NodeSelector({
                 </div>
               </div>
             )
+          })}
+        </div>
+        <Separator />
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trading</p>
+        </div>
+        <div>
+          {tradingNodes.map((nodeType) => {
+            const Icon = nodeType.icon;
+            return (
+              <div
+                key={nodeType.type}
+                className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-[#00E5A0]"
+                onClick={() => handleNodeSelect(nodeType)}
+              >
+                <div className="flex items-center gap-6 w-full overflow-hidden">
+                  {typeof Icon === "string" ? (
+                    <img src={Icon} alt={nodeType.label} className="size-5 object-contain rounded-sm" />
+                  ) : (
+                    <Icon className="size-5 text-[#00E5A0]" />
+                  )}
+                  <div className="flex flex-col items-start text-left">
+                    <span className="font-medium text-sm">{nodeType.label}</span>
+                    <span className="text-xs text-muted-foreground">{nodeType.description}</span>
+                  </div>
+                </div>
+              </div>
+            );
           })}
         </div>
       </SheetContent>

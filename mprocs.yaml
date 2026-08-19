@@ -7,3 +7,6 @@ procs:
 
   next:
     cmd: ["npm", "run", "dev"]
+
+  market-listener:
+    cmd: ["npx", "dotenv-cli", "--", "npx", "tsx", "services/market-listener/index.ts"]

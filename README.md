@@ -50,6 +50,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://nextjs.org/docs/app/building-your-application/optimizing/fonts), a new font family for Vercel.
 
+## Trading Vertical Architecture & Engine
+
+Flux includes a quantitative paper trading vertical built on top of the workflow graph execution engine.
+
+### Core Components
+- **`ExchangeAdapter` abstraction**: Unified interface (`src/features/trading/adapters/types.ts`) implemented by `alpaca.ts`. Adding an exchange requires only a new adapter file and a one-line entry in `registry.ts`.
+- **`MarketDataProvider` parity**: Live and backtest modes emit identical `Candle` shapes downstream so indicator and order logic behaves consistently across live execution and historical replay.
+- **3 Workflow Nodes**:
+  - `Market Data`: Triggers executions on live tick updates or starts backtesting workflows.
+  - `Indicator`: Calculates SMA, EMA, RSI, and MACD via `technicalindicators`.
+  - `Order`: Places paper orders via Alpaca paper trading API with deterministic idempotency keys (`client_order_id: ${executionId}-${nodeId}`).
+
+### Engineering Tradeoffs & Architecture Notes
+1. **Indicator State Hot-path & Eventual Consistency**:
+   - **Hot Path**: Rolling indicator price buffers reside in Upstash Redis (`indicator:{nodeId}:prices`).
+   - **Cold Path**: Postgres `IndicatorState` table is synced every 100 ticks for auditing.
+   - *Accepted Tradeoff*: Prioritizes sub-millisecond tick execution throughput; up to 100 ticks of indicator buffer may need rebuilding upon process restart.
+2. **Production Deployment for `market-listener`**:
+   - The standalone `services/market-listener/index.ts` process maintains a persistent WebSocket connection to Alpaca.
+   - *Deployment Requirement*: While Next.js API routes and the UI deploy serverless (e.g. on Vercel), `services/market-listener` requires an always-on persistent container/host (Railway, Fly.io, or VPS).
+
+### Seeding the Demo Strategy
+To seed a pre-configured AAPL 10/30 SMA crossover trading workflow with connections:
+```bash
+npx tsx scripts/seed-sma-crossover.ts
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -64,3 +91,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+

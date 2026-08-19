@@ -62,6 +62,16 @@ const credentialTypeOptions = [
     label: "Gemini",
     logo: "/logos/gemini.svg",
   },
+  {
+    value: CredentialType.ALPACA,
+    label: "Alpaca (Paper Trading)",
+    logo: "/logos/alpaca.svg",
+  },
+  {
+    value: CredentialType.BINANCE,
+    label: "Binance (Testnet)",
+    logo: "/logos/binance.svg",
+  },
 ];
 
 interface CredentialFormProps {

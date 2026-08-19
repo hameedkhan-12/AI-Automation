@@ -20,6 +20,16 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: optionalString,
   GOOGLE_CLIENT_ID: optionalString,
   GOOGLE_CLIENT_SECRET: optionalString,
+  // ─── Trading / Redis ──────────────────────────────────────────────────────
+  // Required only when using trading nodes. Safe to leave unset in non-trading
+  // deployments — validated at call site, not at startup.
+  UPSTASH_REDIS_REST_URL: optionalString,
+  UPSTASH_REDIS_REST_TOKEN: optionalString,
+  // Alpaca paper trading — https://paper-api.alpaca.markets
+  ALPACA_API_KEY: optionalString,
+  ALPACA_API_SECRET: optionalString,
+  ALPACA_BASE_URL: optionalString,
 });
 
 export const env = envSchema.parse(process.env);
+

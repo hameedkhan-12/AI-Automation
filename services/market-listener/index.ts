@@ -1,0 +1,175 @@
+/**
+ * Market Listener — standalone Node.js process.
+ *
+ * Connects to Alpaca's WebSocket data stream and forwards each tick to the
+ * Next.js app via POST /api/internal/market-tick.
+ *
+ * DEPLOYMENT NOTE:
+ * This process must run on an always-on host (Railway, Fly.io, small VPS, or
+ * a container) — it cannot run on serverless platforms like Vercel because it
+ * maintains a persistent WebSocket connection. The rest of the app can deploy
+ * on Vercel; only this process needs a persistent host.
+ *
+ * Run locally: tsx services/market-listener/index.ts
+ * Control API: http://localhost:3001/subscribe   { symbol, workflowId }
+ *              http://localhost:3001/unsubscribe  { symbol, workflowId }
+ *              http://localhost:3001/status       (GET) current subscriptions
+ */
+
+import WebSocket from "ws";
+import http from "http";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const ALPACA_WS_URL = "wss://stream.data.alpaca.markets/v2/iex";
+const CONTROL_PORT = Number(process.env.LISTENER_CONTROL_PORT ?? 3001);
+
+// symbol -> Set of workflowIds
+const subscriptions = new Map<string, Set<string>>();
+
+let ws: WebSocket | null = null;
+let authenticated = false;
+
+// ─── Forward tick to Next.js ──────────────────────────────────────────────────
+
+async function forwardTick(symbol: string, candle: Record<string, unknown>): Promise<void> {
+  const workflowIds = subscriptions.get(symbol);
+  if (!workflowIds || workflowIds.size === 0) return;
+
+  for (const workflowId of workflowIds) {
+    try {
+      await fetch(`${APP_URL}/api/internal/market-tick`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol, candle, workflowId }),
+      });
+    } catch (err) {
+      console.error(`[listener] Failed to forward tick for ${workflowId}:`, err);
+    }
+  }
+}
+
+// ─── Alpaca WebSocket connection ──────────────────────────────────────────────
+
+function connectAlpaca(): void {
+  ws = new WebSocket(ALPACA_WS_URL);
+
+  ws.on("open", () => {
+    console.log("[listener] WebSocket connected to Alpaca");
+    ws!.send(JSON.stringify({
+      action: "auth",
+      key: process.env.ALPACA_API_KEY,
+      secret: process.env.ALPACA_API_SECRET,
+    }));
+  });
+
+  ws.on("message", async (raw: Buffer) => {
+    const messages = JSON.parse(raw.toString()) as Array<Record<string, unknown>>;
+
+    for (const msg of messages) {
+      if (msg.T === "success" && msg.msg === "authenticated" && !authenticated) {
+        authenticated = true;
+        console.log("[listener] Authenticated with Alpaca");
+        // Subscribe to all currently tracked symbols
+        const symbols = [...subscriptions.keys()];
+        if (symbols.length > 0) {
+          ws!.send(JSON.stringify({ action: "subscribe", bars: symbols }));
+        }
+      }
+
+      if (msg.T === "b") {
+        // Bar message — forward to app
+        const symbol = msg.S as string;
+        const candle = {
+          timestamp: new Date(msg.t as string).getTime(),
+          open: msg.o,
+          high: msg.h,
+          low: msg.l,
+          close: msg.c,
+          volume: msg.v,
+        };
+        await forwardTick(symbol, candle);
+        console.log(`[listener] Tick forwarded: ${symbol} @ ${candle.close}`);
+      }
+    }
+  });
+
+  ws.on("error", (err) => {
+    console.error("[listener] WebSocket error:", err.message);
+  });
+
+  ws.on("close", () => {
+    authenticated = false;
+    console.warn("[listener] WebSocket closed — reconnecting in 5s...");
+    setTimeout(connectAlpaca, 5000);
+  });
+}
+
+// ─── Subscribe/unsubscribe helpers ────────────────────────────────────────────
+
+function addSubscription(symbol: string, workflowId: string): void {
+  if (!subscriptions.has(symbol)) {
+    subscriptions.set(symbol, new Set());
+    // Subscribe to new symbol on Alpaca
+    if (authenticated && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "subscribe", bars: [symbol] }));
+    }
+  }
+  subscriptions.get(symbol)!.add(workflowId);
+  console.log(`[listener] Subscribed ${workflowId} to ${symbol}`);
+}
+
+function removeSubscription(symbol: string, workflowId: string): void {
+  subscriptions.get(symbol)?.delete(workflowId);
+  if (subscriptions.get(symbol)?.size === 0) {
+    subscriptions.delete(symbol);
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "unsubscribe", bars: [symbol] }));
+    }
+  }
+  console.log(`[listener] Unsubscribed ${workflowId} from ${symbol}`);
+}
+
+// ─── Control API (HTTP) ───────────────────────────────────────────────────────
+
+const controlServer = http.createServer((req, res) => {
+  res.setHeader("Content-Type", "application/json");
+
+  if (req.method === "GET" && req.url === "/status") {
+    const status = Object.fromEntries(
+      [...subscriptions.entries()].map(([sym, ids]) => [sym, [...ids]]),
+    );
+    res.end(JSON.stringify({ status: "running", subscriptions: status }));
+    return;
+  }
+
+  let body = "";
+  req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
+  req.on("end", () => {
+    const data = JSON.parse(body || "{}") as { symbol?: string; workflowId?: string };
+
+    if (!data.symbol || !data.workflowId) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "symbol and workflowId are required" }));
+      return;
+    }
+
+    if (req.url === "/subscribe") {
+      addSubscription(data.symbol, data.workflowId);
+      res.end(JSON.stringify({ ok: true }));
+    } else if (req.url === "/unsubscribe") {
+      removeSubscription(data.symbol, data.workflowId);
+      res.end(JSON.stringify({ ok: true }));
+    } else {
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: "Not found" }));
+    }
+  });
+});
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+controlServer.listen(CONTROL_PORT, () => {
+  console.log(`[listener] Control API listening on :${CONTROL_PORT}`);
+});
+
+connectAlpaca();

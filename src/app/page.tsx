@@ -83,21 +83,29 @@ const STEPS = [
   },
 ];
 
-export default function Home() {
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+
+export default async function Home() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  const isAuthenticated = !!session;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Nav />
-      <Hero />
+      <Nav isAuthenticated={isAuthenticated} />
+      <Hero isAuthenticated={isAuthenticated} />
       <IntegrationStrip />
       <Features />
       <HowItWorks />
-      <CtaBand />
+      <CtaBand isAuthenticated={isAuthenticated} />
       <Footer />
     </div>
   );
 }
 
-function Nav() {
+function Nav({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -130,22 +138,33 @@ function Nav() {
           </a>
         </nav>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/signup">
-              Get started
-              <ArrowRightIcon />
-            </Link>
-          </Button>
+          {isAuthenticated ? (
+            <Button size="sm" asChild>
+              <Link href="/workflows">
+                Dashboard
+                <ArrowRightIcon />
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">
+                  Get started
+                  <ArrowRightIcon />
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
   );
 }
 
-function Hero() {
+function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <section className="mx-auto max-w-6xl px-6 pt-16 pb-20 md:pt-24 md:pb-28">
       <div className="grid items-center gap-14 md:grid-cols-2">
@@ -166,8 +185,8 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/signup">
-                Start building
+              <Link href={isAuthenticated ? "/workflows" : "/signup"}>
+                {isAuthenticated ? "Open workflows" : "Start building"}
                 <ArrowRightIcon />
               </Link>
             </Button>
@@ -380,7 +399,7 @@ function HowItWorks() {
   );
 }
 
-function CtaBand() {
+function CtaBand({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24 text-center">
       <h2 className="text-3xl font-semibold tracking-tight">
@@ -392,8 +411,8 @@ function CtaBand() {
       </p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button size="lg" asChild>
-          <Link href="/signup">
-            Get started free
+          <Link href={isAuthenticated ? "/workflows" : "/signup"}>
+            {isAuthenticated ? "Go to dashboard" : "Get started free"}
             <ArrowRightIcon />
           </Link>
         </Button>
