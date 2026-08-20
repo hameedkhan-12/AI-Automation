@@ -27,13 +27,29 @@ function getRedisKey(nodeId: string) {
 }
 
 async function readPriceBuffer(nodeId: string): Promise<number[]> {
-  const raw = await redis.get<number[]>(getRedisKey(nodeId));
-  return raw ?? [];
+  try {
+    const raw = await redis.get<number[]>(getRedisKey(nodeId));
+    if (raw && Array.isArray(raw)) return raw;
+  } catch {
+    // fallback to Postgres indicator state if Redis is offline
+  }
+
+  const record = await prisma.indicatorState.findUnique({
+    where: { nodeId_key: { nodeId, key: "prices" } },
+  });
+  if (record && Array.isArray(record.value)) {
+    return record.value as number[];
+  }
+  return [];
 }
 
 async function writePriceBuffer(nodeId: string, prices: number[]): Promise<void> {
   const capped = prices.slice(-MAX_BUFFER);
-  await redis.set(getRedisKey(nodeId), capped);
+  try {
+    await redis.set(getRedisKey(nodeId), capped);
+  } catch {
+    // non-blocking
+  }
 }
 
 function computeIndicator(type: string, period: number, prices: number[]): number | null {

@@ -195,6 +195,7 @@ export const alpacaAdapter: ExchangeAdapter = {
       method: "POST",
       headers: alpacaHeaders(credentials),
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(3500),
     });
 
     if (!res.ok) {

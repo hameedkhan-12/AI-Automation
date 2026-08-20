@@ -93,7 +93,11 @@ export const executeWorkflow = inngest.createFunction(
     });
 
     // Initialize context with any initial data from the trigger
-    let context = event.data.initialData || {};
+    let context: Record<string, unknown> = {
+      ...event.data.initialData,
+      __workflowId: workflowId,
+      __executionId: inngestEventId,
+    };
 
     // Execute each node
     for (const node of sortedNodes) {
