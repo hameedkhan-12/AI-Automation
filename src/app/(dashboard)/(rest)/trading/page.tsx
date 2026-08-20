@@ -1,4 +1,4 @@
-import { trpc } from "@/trpc/server";
+import { caller } from "@/trpc/server";
 import Link from "next/link";
 import { TrendingUpIcon, BarChart3Icon, ArrowUpDownIcon } from "lucide-react";
 
@@ -9,9 +9,9 @@ export const metadata = {
 
 export default async function TradingPage() {
   const [exchanges, positions, orders] = await Promise.all([
-    trpc.trading.exchanges.list(),
-    trpc.trading.positions.list(),
-    trpc.trading.orders.list({ page: 1, pageSize: 5 }),
+    caller.trading.exchanges.list(),
+    caller.trading.positions.list(),
+    caller.trading.orders.list({ page: 1, pageSize: 5 }),
   ]);
 
   return (

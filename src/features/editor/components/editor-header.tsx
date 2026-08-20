@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useSuspenseWorkflow, useUpdateWorkflow, useUpdateWorkflowName } from "@/features/workflows/hooks/use-workflows";
 import { useAtomValue } from "jotai";
 import { editorAtom } from "../store/atoms";
+import { ExecuteWorkflowButton } from "./execute-workflow-button";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
   const editor = useAtomValue(editorAtom);
@@ -140,7 +141,10 @@ export const EditorHeader = ({ workflowId }: { workflowId: string }) => {
       <SidebarTrigger />
       <div className="flex flex-row items-center justify-between gap-x-4 w-full">
         <EditorBreadcrumbs workflowId={workflowId} />
-        <EditorSaveButton workflowId={workflowId} />
+        <div className="flex items-center gap-2">
+          <ExecuteWorkflowButton workflowId={workflowId} size="sm" />
+          <EditorSaveButton workflowId={workflowId} />
+        </div>
       </div>
     </header>
   );

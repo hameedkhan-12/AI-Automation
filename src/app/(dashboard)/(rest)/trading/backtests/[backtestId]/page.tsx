@@ -1,4 +1,4 @@
-import { trpc } from "@/trpc/server";
+import { caller } from "@/trpc/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeftIcon, TrendingUpIcon, ActivityIcon, PercentIcon } from "lucide-react";
@@ -25,7 +25,7 @@ export default async function BacktestResultsPage({ params }: Props) {
 
   let execution;
   try {
-    execution = await trpc.executions.getOne({ id: backtestId });
+    execution = await caller.executions.getOne({ id: backtestId });
   } catch {
     notFound();
   }

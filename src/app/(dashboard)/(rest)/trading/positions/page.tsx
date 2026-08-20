@@ -1,4 +1,4 @@
-import { trpc } from "@/trpc/server";
+import { caller } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 export default async function PositionsPage() {
-  const positions = await trpc.trading.positions.list();
+  const positions = await caller.trading.positions.list();
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
