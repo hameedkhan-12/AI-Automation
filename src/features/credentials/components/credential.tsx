@@ -10,6 +10,7 @@ import {
 } from "../hooks/use-credentials";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import {
@@ -38,10 +39,15 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+const EXCHANGE_TYPES = new Set<CredentialType>([
+  CredentialType.ALPACA,
+  CredentialType.BINANCE,
+]);
+
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   type: z.enum(CredentialType),
-  value: z.string().min(1, "API key is required"),
+  value: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -102,14 +108,40 @@ export const CredentialForm = ({
     },
   });
 
+  const selectedType = form.watch("type");
+  const isExchangeType = EXCHANGE_TYPES.has(selectedType);
+
+  const [apiKeyId, setApiKeyId] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
+
   const onSubmit = async (values: FormValues) => {
+    let finalValue: string;
+
+    if (isExchangeType) {
+      if (!apiKeyId.trim() || !apiSecret.trim()) {
+        setExchangeError("Both API Key ID and Secret Key are required.");
+        return;
+      }
+      setExchangeError(null);
+      finalValue = JSON.stringify({ apiKey: apiKeyId.trim(), apiSecret: apiSecret.trim() });
+    } else {
+      if (!values.value?.trim()) {
+        form.setError("value", { message: "API key is required" });
+        return;
+      }
+      finalValue = values.value.trim();
+    }
+
+    const submitValues = { name: values.name, type: values.type, value: finalValue };
+
     if (isEdit && initialData?.id) {
       await updateCredential.mutateAsync({
         id: initialData.id,
-        ...values,
+        ...submitValues,
       })
     } else {
-      await createCredential.mutateAsync(values, {
+      await createCredential.mutateAsync(submitValues, {
         onSuccess: (data) => {
           router.push(`/credentials/${data.id}`);
         },
@@ -189,23 +221,54 @@ export const CredentialForm = ({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>API Key</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="sk-..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isExchangeType ? (
+                <>
+                  <div className="space-y-2">
+                    <FormLabel>API Key ID</FormLabel>
+                    <Input
+                      type="password"
+                      placeholder="APCA-API-KEY-ID"
+                      value={apiKeyId}
+                      onChange={(e) => setApiKeyId(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <FormLabel>Secret Key</FormLabel>
+                    <Input
+                      type="password"
+                      placeholder="APCA-API-SECRET-KEY"
+                      value={apiSecret}
+                      onChange={(e) => setApiSecret(e.target.value)}
+                    />
+                  </div>
+                  {isEdit && (
+                    <p className="text-sm text-muted-foreground">
+                      For security, existing keys aren't shown — enter both values again to update this credential.
+                    </p>
+                  )}
+                  {exchangeError && (
+                    <p className="text-sm text-destructive">{exchangeError}</p>
+                  )}
+                </>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="value"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="sk-..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="flex gap-4">
                 <Button

@@ -19,18 +19,9 @@ type OrderData = {
   limitPrice?: number;
 };
 
-/**
- * Order executor — places a paper order via the configured ExchangeAdapter.
- *
- * IDEMPOTENCY (fix #1 from code review):
- * The order call is wrapped in step.run() with a deterministic ID so Inngest
- * will not re-execute it on retry. Additionally, we pass a clientOrderId of
- * `{executionId}-{nodeId}` to Alpaca's client_order_id field.
- * Alpaca deduplicates by client_order_id — so even if our POST is retried at
- * the network layer, the same order will never be placed twice.
- *
- * Reference: https://docs.alpaca.markets/trading/orders/#client-order-id
- */
+// Used only for a simulated fill when no real candle price is available in context.
+const FALLBACK_SIMULATED_PRICE = 181.9;
+
 export const orderExecutor: NodeExecutor<OrderData> = async ({
   data,
   nodeId,
@@ -60,38 +51,55 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
 
   const adapter = getExchangeAdapter(data.exchange);
 
-  // Build deterministic idempotency key — same execution + same node always
-  // produces the same key, preventing duplicate orders on Inngest retry.
   const executionId = (context.__executionId as string | undefined) || createId();
   const clientOrderId = `${executionId}-${nodeId}`.slice(0, 48); // Alpaca max 48 chars
 
-  const result = await step.run("place-order", async () => {
-    // 1. Decrypt credentials if available
-    let credentials: Record<string, string> = {};
-    if (data.credentialId) {
-      try {
-        const cred = await prisma.credential.findUnique({
-          where: { id: data.credentialId, userId },
-        });
-        if (cred) {
-          const decrypted = decrypt(cred.value);
-          try {
-            credentials = JSON.parse(decrypted) as Record<string, string>;
-          } catch {
-            credentials = { apiKey: decrypted };
+  let result: import("../../adapters/types").OrderResult;
+  try {
+    result = await step.run("place-order", async () => {
+      // 1. Decrypt credentials if available
+      let credentials: Record<string, string> = {};
+      if (data.credentialId) {
+        try {
+          const cred = await prisma.credential.findUnique({
+            where: { id: data.credentialId, userId },
+          });
+          if (cred) {
+            const decrypted = decrypt(cred.value);
+            try {
+              credentials = JSON.parse(decrypted) as Record<string, string>;
+            } catch {
+              credentials = { apiKey: decrypted };
+            }
           }
+        } catch (err) {
+          console.warn("[order-executor] Decryption skipped, using paper simulation mode:", err);
         }
-      } catch (err) {
-        console.warn("[order-executor] Decryption skipped, using paper simulation mode:", err);
       }
-    }
 
-    // 2. Place order via adapter (or simulate paper fill if credentials missing)
-    let orderResult: import("../../adapters/types").OrderResult;
-    const currentPrice = (context.candle as Candle | undefined)?.close ?? 181.90;
+      const currentPrice = (context.candle as Candle | undefined)?.close ?? FALLBACK_SIMULATED_PRICE;
+      const hasRealCredentials =
+        Boolean(credentials.apiKey) && credentials.apiKey !== "encrypted_placeholder_value";
 
-    try {
-      if (credentials.apiKey && credentials.apiKey !== "encrypted_placeholder_value") {
+      if (hasRealCredentials && !credentials.apiSecret) {
+        throw new Error(
+          "Alpaca credential is missing its secret key. Edit the credential and re-enter both the API Key ID and Secret Key.",
+        );
+      }
+
+      let orderResult: import("../../adapters/types").OrderResult;
+
+      if (!hasRealCredentials) {
+        // Deliberate simulated paper fill — no credentials configured, this
+        // is expected demo/dev behavior, not an error path.
+        orderResult = {
+          orderId: `sim_${clientOrderId}`,
+          status: "FILLED",
+          filledPrice: data.limitPrice ?? currentPrice,
+          filledQuantity: data.quantity!,
+        };
+      } else {
+        // Real credentials present — let a failure here throw for real.
         orderResult = await adapter.placeOrder(
           {
             symbol: data.symbol!,
@@ -103,82 +111,71 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
           },
           credentials,
         );
-      } else {
-        // Simulated paper fill
-        orderResult = {
-          orderId: `sim_${clientOrderId}`,
-          status: "FILLED",
-          filledPrice: data.limitPrice ?? currentPrice,
-          filledQuantity: data.quantity!,
-        };
       }
-    } catch (err) {
-      console.warn("[order-executor] Exchange API call failed, simulating paper fill:", err);
-      orderResult = {
-        orderId: `sim_${clientOrderId}`,
-        status: "FILLED",
-        filledPrice: data.limitPrice ?? currentPrice,
-        filledQuantity: data.quantity!,
-      };
-    }
 
-    // 3. Persist order record (upsert to be idempotent across step retries)
-    await prisma.paperOrder.upsert({
-      where: { clientOrderId },
-      create: {
-        userId,
-        workflowId: (context.__workflowId as string | undefined) ?? "unknown",
-        symbol: data.symbol!,
-        side: data.side!,
-        quantity: data.quantity!,
-        filledPrice: orderResult.filledPrice,
-        status: orderResult.status,
-        clientOrderId,
-      },
-      update: {
-        filledPrice: orderResult.filledPrice,
-        status: orderResult.status,
-      },
-    });
-
-    // 4. Upsert paper position
-    if (orderResult.status === "FILLED" && orderResult.filledPrice) {
-      const filledQty = orderResult.filledQuantity ?? data.quantity!;
-      const filledPrice = orderResult.filledPrice;
-
-      const existing = await prisma.paperPosition.findUnique({
-        where: { userId_symbol: { userId, symbol: data.symbol! } },
+      // 3. Persist order record (upsert to be idempotent across step retries)
+      await prisma.paperOrder.upsert({
+        where: { clientOrderId },
+        create: {
+          userId,
+          workflowId: (context.__workflowId as string | undefined) ?? "unknown",
+          symbol: data.symbol!,
+          side: data.side!,
+          quantity: data.quantity!,
+          filledPrice: orderResult.filledPrice,
+          status: orderResult.status,
+          clientOrderId,
+        },
+        update: {
+          filledPrice: orderResult.filledPrice,
+          status: orderResult.status,
+        },
       });
 
-      if (data.side === "BUY") {
-        const prevQty = existing?.quantity ?? 0;
-        const prevAvg = existing?.avgPrice ?? 0;
-        const newQty = prevQty + filledQty;
-        const newAvg = (prevQty * prevAvg + filledQty * filledPrice) / newQty;
+      // 4. Upsert paper position
+      if (orderResult.status === "FILLED" && orderResult.filledPrice) {
+        const filledQty = orderResult.filledQuantity ?? data.quantity!;
+        const filledPrice = orderResult.filledPrice;
 
-        await prisma.paperPosition.upsert({
+        const existing = await prisma.paperPosition.findUnique({
           where: { userId_symbol: { userId, symbol: data.symbol! } },
-          create: { userId, symbol: data.symbol!, quantity: newQty, avgPrice: newAvg },
-          update: { quantity: newQty, avgPrice: newAvg },
         });
-      } else {
-        // SELL
-        const newQty = (existing?.quantity ?? 0) - filledQty;
-        if (newQty <= 0) {
-          await prisma.paperPosition.deleteMany({
-            where: { userId, symbol: data.symbol! },
+
+        if (data.side === "BUY") {
+          const prevQty = existing?.quantity ?? 0;
+          const prevAvg = existing?.avgPrice ?? 0;
+          const newQty = prevQty + filledQty;
+          const newAvg = (prevQty * prevAvg + filledQty * filledPrice) / newQty;
+
+          await prisma.paperPosition.upsert({
+            where: { userId_symbol: { userId, symbol: data.symbol! } },
+            create: { userId, symbol: data.symbol!, quantity: newQty, avgPrice: newAvg },
+            update: { quantity: newQty, avgPrice: newAvg },
           });
         } else {
-          await prisma.paperPosition.update({
-            where: { userId_symbol: { userId, symbol: data.symbol! } },
-            data: { quantity: newQty },
-          });
+          // SELL
+          const newQty = (existing?.quantity ?? 0) - filledQty;
+          if (newQty <= 0) {
+            await prisma.paperPosition.deleteMany({
+              where: { userId, symbol: data.symbol! },
+            });
+          } else {
+            await prisma.paperPosition.update({
+              where: { userId_symbol: { userId, symbol: data.symbol! } },
+              data: { quantity: newQty },
+            });
+          }
         }
       }
-    }
 
-    return orderResult;
-  });
+      return orderResult;
+    });
+  } catch (err) {
+    // Real failure (real adapter error, not the deliberate simulation path
+    // above) — report it honestly instead of faking a fill.
+    await publish(orderChannel().status({ nodeId, status: "error" }));
+    throw err;
+  }
 
   await publish(orderChannel().status({ nodeId, status: "success" }));
 
