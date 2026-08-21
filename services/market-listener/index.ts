@@ -1,21 +1,3 @@
-/**
- * Market Listener — standalone Node.js process.
- *
- * Connects to Alpaca's WebSocket data stream and forwards each tick to the
- * Next.js app via POST /api/internal/market-tick.
- *
- * DEPLOYMENT NOTE:
- * This process must run on an always-on host (Railway, Fly.io, small VPS, or
- * a container) — it cannot run on serverless platforms like Vercel because it
- * maintains a persistent WebSocket connection. The rest of the app can deploy
- * on Vercel; only this process needs a persistent host.
- *
- * Run locally: tsx services/market-listener/index.ts
- * Control API: http://localhost:3001/subscribe   { symbol, workflowId }
- *              http://localhost:3001/unsubscribe  { symbol, workflowId }
- *              http://localhost:3001/status       (GET) current subscriptions
- */
-
 import WebSocket from "ws";
 import http from "http";
 
