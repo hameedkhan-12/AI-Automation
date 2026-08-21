@@ -130,6 +130,9 @@ export const alpacaAdapter: ExchangeAdapter = {
         "APCA-API-KEY-ID": process.env.ALPACA_API_KEY ?? "",
         "APCA-API-SECRET-KEY": process.env.ALPACA_API_SECRET ?? "",
       },
+      // Without this, a stalled connection to Alpaca hangs the whole
+      // backtest indefinitely instead of failing fast and visibly.
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {

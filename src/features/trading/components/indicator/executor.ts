@@ -13,14 +13,11 @@ type IndicatorData = {
   variableName?: string;
   type?: "SMA" | "EMA" | "RSI" | "MACD";
   period?: number;
-  source?: string; // context key holding the candle; defaults to "candle"
+  source?: string; 
 };
 
-// Redis hot-path: rolling price buffer
-// Accepted tradeoff: up to 100 ticks of indicator state can be lost on crash.
-// Synced to IndicatorState (Postgres) every SYNC_EVERY ticks as an audit trail.
 const SYNC_EVERY = 100;
-const MAX_BUFFER = 500; // cap memory — keep last 500 prices
+const MAX_BUFFER = 500;
 
 function getRedisKey(nodeId: string) {
   return `indicator:${nodeId}:prices`;
@@ -43,12 +40,30 @@ async function readPriceBuffer(nodeId: string): Promise<number[]> {
   return [];
 }
 
-async function writePriceBuffer(nodeId: string, prices: number[]): Promise<void> {
+async function writePriceBuffer(nodeId: string, prices: number[], workflowId: string): Promise<void> {
   const capped = prices.slice(-MAX_BUFFER);
   try {
     await redis.set(getRedisKey(nodeId), capped);
+    return;
   } catch {
-    // non-blocking
+    // Redis unreachable — fall through to a Postgres write-through below.
+    // Without this, the buffer would silently never persist between ticks
+    // at all (each candle would start from empty), and a strategy would
+    // quietly never accumulate enough history to compute anything —
+    // exactly what happened before Upstash was configured.
+  }
+
+  try {
+    await prisma.indicatorState.upsert({
+      where: { nodeId_key: { nodeId, key: "prices" } },
+      create: { nodeId, workflowId, key: "prices", value: capped },
+      update: { value: capped },
+    });
+  } catch {
+    // Both Redis and Postgres write failed — genuinely nothing we can do
+    // to persist state this tick. Non-blocking on purpose (a live run
+    // shouldn't crash over this), but this is now a real data gap, not a
+    // cosmetic one.
   }
 }
 
@@ -113,19 +128,16 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   }
 
   const result = await step.run("compute-indicator", async () => {
-    // 1. Read current price buffer from Redis
+    const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
+
     const prices = await readPriceBuffer(nodeId);
     prices.push(candle.close);
 
-    // 2. Compute indicator value
     const value = computeIndicator(data.type!, period, prices);
 
-    // 3. Write updated buffer back to Redis
-    await writePriceBuffer(nodeId, prices);
+    await writePriceBuffer(nodeId, prices, workflowId);
 
-    // 4. Periodic sync to Postgres (every SYNC_EVERY ticks)
     if (prices.length % SYNC_EVERY === 0) {
-      const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
       await prisma.indicatorState.upsert({
         where: { nodeId_key: { nodeId, key: "prices" } },
         create: { nodeId, workflowId, key: "prices", value: prices },

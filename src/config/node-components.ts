@@ -14,6 +14,7 @@ import { SlackNode } from "@/features/executions/components/slack/node";
 import { MarketDataTriggerNode } from "@/features/trading/components/market-data-trigger/node";
 import { IndicatorNode } from "@/features/trading/components/indicator/node";
 import { OrderNode } from "@/features/trading/components/order/node";
+import { ConditionNode } from "@/features/executions/components/condition/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -29,6 +30,7 @@ export const nodeComponents = {
   [NodeType.MARKET_DATA_TRIGGER]: MarketDataTriggerNode,
   [NodeType.INDICATOR]: IndicatorNode,
   [NodeType.ORDER]: OrderNode,
+  [NodeType.CONDITION]: ConditionNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeType = keyof typeof nodeComponents;

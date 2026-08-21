@@ -125,6 +125,7 @@ enum NodeType {
   MARKET_DATA_TRIGGER
   INDICATOR
   ORDER
+  CONDITION
 }
 
 model Node {
@@ -170,6 +171,7 @@ enum ExecutionStatus {
   RUNNING
   SUCCESS
   FAILED
+  SKIPPED
 }
 
 model Execution {
@@ -192,23 +194,17 @@ model Execution {
 
 // ─── Trading Models ─────────────────────────────────────────────────────────
 
-// Stores rolling indicator state per node.
-// Hot path: Redis key `indicator:{nodeId}:prices` (capped list).
-// Cold path: this table — synced every ~100 ticks as an audit trail.
-// Accepted tradeoff: up to 100 ticks of indicator state can be lost on crash.
 model IndicatorState {
   id         String   @id @default(cuid())
   nodeId     String
   workflowId String
   key        String   // e.g. "sma_20", "prices"
-  value      Json     // rolling price buffer or current computed value
+  value      Json     
   updatedAt  DateTime @updatedAt
 
   @@unique([nodeId, key])
 }
 
-// Current paper positions for a user.
-// Upserted on every ORDER node fill.
 model PaperPosition {
   id        String   @id @default(cuid())
   userId    String
@@ -220,7 +216,6 @@ model PaperPosition {
   @@unique([userId, symbol])
 }
 
-// Full order history for paper trades.
 model PaperOrder {
   id          String   @id @default(cuid())
   userId      String
@@ -236,9 +231,6 @@ model PaperOrder {
   createdAt   DateTime @default(now())
 }
 
-// Cached OHLCV data per exchange/symbol/interval.
-// Populated on first backtest run, reused on subsequent runs.
-// Source of truth for BacktestMarketDataProvider.
 model HistoricalCandle {
   id        String   @id @default(cuid())
   exchange  String

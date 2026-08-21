@@ -19,6 +19,8 @@ import { orderChannel } from "./channels/order";
 import { BacktestMarketDataProvider, buildBacktestSummary } from "@/features/trading/providers/backtest";
 import { getExchangeAdapter } from "@/features/trading/adapters/registry";
 import type { Trade } from "@/features/trading/providers/backtest";
+import { conditionChannel } from "./channels/condition";
+import { ConditionNotMetError } from "@/lib/condition-not-met-error";
 
 export const executeWorkflow = inngest.createFunction(
   {
@@ -50,6 +52,7 @@ export const executeWorkflow = inngest.createFunction(
       marketDataTriggerChannel(),
       indicatorChannel(),
       orderChannel(),
+      conditionChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -100,26 +103,45 @@ export const executeWorkflow = inngest.createFunction(
     };
 
     // Execute each node
+    let skippedReason: string | null = null;
     for (const node of sortedNodes) {
       const executor = getExecutor(node.type as NodeType);
-      context = await executor({
-        data: node.data as Record<string, unknown>,
-        nodeId: node.id,
-        userId,
-        context,
-        step,
-        publish,
-      });
+      try {
+        context = await executor({
+          data: node.data as Record<string, unknown>,
+          nodeId: node.id,
+          userId,
+          context,
+          step,
+          publish,
+        });
+      } catch (err) {
+        if (err instanceof ConditionNotMetError) {
+          // Not a failure — a Condition node deliberately halted execution.
+          // Stop running remaining downstream nodes, but the execution as a
+          // whole is a graceful SKIPPED outcome, not FAILED.
+          skippedReason = err.message;
+          break;
+        }
+        throw err;
+      }
     }
 
     await step.run("update-execution", async () => {
       return prisma.execution.update({
         where: { inngestEventId, workflowId },
-        data: {
-          status: ExecutionStatus.SUCCESS,
-          completedAt: new Date(),
-          output: context,
-        },
+        data: skippedReason
+          ? {
+              status: ExecutionStatus.SKIPPED,
+              completedAt: new Date(),
+              output: context,
+              error: skippedReason,
+            }
+          : {
+              status: ExecutionStatus.SUCCESS,
+              completedAt: new Date(),
+              output: context,
+            },
       })
     });
 
@@ -215,22 +237,31 @@ export const executeBacktest = inngest.createFunction(
         allCandles.push(candle);
         context = { ...context, candle };
 
-        for (const node of sortedNodes) {
-          const executor = getExecutor(node.type as NodeType);
-          context = await executor({
-            data: node.data as Record<string, unknown>,
-            nodeId: node.id,
-            userId,
-            context,
-            step: backtestStep,
-            publish: noopPublish,
-          });
+        try {
+          for (const node of sortedNodes) {
+            const executor = getExecutor(node.type as NodeType);
+            context = await executor({
+              data: node.data as Record<string, unknown>,
+              nodeId: node.id,
+              userId,
+              context,
+              step: backtestStep,
+              publish: noopPublish,
+            });
 
-          // Collect trades placed by ORDER nodes
-          if (node.type === NodeType.ORDER && context.__lastOrder) {
-            const order = context.__lastOrder as Trade;
-            trades.push(order);
+            // Collect trades placed by ORDER nodes
+            if (node.type === NodeType.ORDER && context.__lastOrder) {
+              const order = context.__lastOrder as Trade;
+              trades.push(order);
+            }
           }
+        } catch (err) {
+          if (!(err instanceof ConditionNotMetError)) {
+            throw err; // a real error (bad config, adapter failure) should still abort the backtest
+          }
+          // Condition not met on this candle — expected on most candles in
+          // a crossover strategy. Skip remaining nodes for this candle only
+          // and continue replaying forward.
         }
 
         candle = await provider.getNextCandle();

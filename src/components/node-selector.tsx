@@ -8,6 +8,7 @@ import {
   TrendingUpIcon,
   ActivityIcon,
   ArrowUpDownIcon,
+  GitBranchIcon,
 } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
@@ -107,6 +108,12 @@ const tradingNodes: NodeTypeOption[] = [
     label: "Order",
     description: "Places a paper order via Alpaca",
     icon: ArrowUpDownIcon,
+  },
+  {
+    type: NodeType.CONDITION,
+    label: "Condition",
+    description: "Gates downstream nodes on a comparison (e.g. SMA crossover) — without this, downstream nodes always run",
+    icon: GitBranchIcon,
   },
 ];
 

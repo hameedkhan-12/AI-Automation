@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "biome check",
     "test": "vitest run",
+    "seed:trading": "dotenv -e .env -- tsx scripts/seed-trading-workflow.ts",
     "test:watch": "vitest",
     "ngrok:dev": "dotenv -- ngrok http --url=$NGROK_URL 3000",
     "format": "biome format --write",

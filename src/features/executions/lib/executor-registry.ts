@@ -12,6 +12,7 @@ import { slackExecutor } from "../components/slack/executor";
 import { marketDataTriggerExecutor } from "@/features/trading/components/market-data-trigger/executor";
 import { indicatorExecutor } from "@/features/trading/components/indicator/executor";
 import { orderExecutor } from "@/features/trading/components/order/executor";
+import { conditionExecutor } from "../components/condition/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: manualTriggerExecutor,
@@ -27,6 +28,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.MARKET_DATA_TRIGGER]: marketDataTriggerExecutor,
   [NodeType.INDICATOR]: indicatorExecutor,
   [NodeType.ORDER]: orderExecutor,
+  [NodeType.CONDITION]: conditionExecutor,
 };
 
 export const getExecutor = (type: NodeType): NodeExecutor => {

@@ -17,6 +17,7 @@ import { useSuspenseWorkflow, useUpdateWorkflow, useUpdateWorkflowName } from "@
 import { useAtomValue } from "jotai";
 import { editorAtom } from "../store/atoms";
 import { ExecuteWorkflowButton } from "./execute-workflow-button";
+import { RunBacktestButton } from "./run-backtest-button";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
   const editor = useAtomValue(editorAtom);
@@ -142,6 +143,7 @@ export const EditorHeader = ({ workflowId }: { workflowId: string }) => {
       <div className="flex flex-row items-center justify-between gap-x-4 w-full">
         <EditorBreadcrumbs workflowId={workflowId} />
         <div className="flex items-center gap-2">
+          <RunBacktestButton workflowId={workflowId} />
           <ExecuteWorkflowButton workflowId={workflowId} size="sm" />
           <EditorSaveButton workflowId={workflowId} />
         </div>
