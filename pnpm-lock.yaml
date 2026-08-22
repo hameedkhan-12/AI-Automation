@@ -21,7 +21,7 @@ importers:
         specifier: ^5.2.2
         version: 5.4.2(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(effect@3.21.0)(react-hook-form@7.83.0(react@19.1.0))(valibot@1.4.2(typescript@5.9.3))(zod@4.4.3)
       '@inngest/realtime':
-        specifier: ^0.4.4
+        specifier: ^0.4.7
         version: 0.4.7(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(next@16.3.1(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(typescript@5.9.3)(zod@4.4.3)
       '@paralleldrive/cuid2':
         specifier: ^2.2.2
@@ -168,7 +168,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       inngest:
-        specifier: ^3.44.1
+        specifier: ^3.54.0
         version: 3.54.2(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(next@16.3.1(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(typescript@5.9.3)(zod@4.4.3)
       input-otp:
         specifier: ^1.4.2
@@ -7825,12 +7825,12 @@ snapshots:
 
   '@types/pg-pool@2.0.7':
     dependencies:
-      '@types/pg': 8.15.6
+      '@types/pg': 8.23.1
 
   '@types/pg@8.15.6':
     dependencies:
       '@types/node': 20.19.43
-      pg-protocol: 1.15.0
+      pg-protocol: 1.16.0
       pg-types: 2.2.0
 
   '@types/pg@8.23.1':
