@@ -1,15 +1,14 @@
 import { caller } from "@/trpc/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, TrendingUpIcon, ActivityIcon, PercentIcon } from "lucide-react";
-import dynamic from "next/dynamic";
+import {
+  ArrowLeftIcon,
+  TrendingUpIcon,
+  ActivityIcon,
+  PercentIcon,
+} from "lucide-react";
 import type { BacktestSummary } from "@/features/trading/providers/backtest";
-
-// Dynamically import EquityChart to ensure no SSR window errors with lightweight-charts
-const EquityChart = dynamic(
-  () => import("@/features/trading/components/equity-chart").then((mod) => mod.EquityChart),
-  { ssr: false, loading: () => <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm">Loading chart...</div> }
-);
+import { EquityChart } from "@/features/trading/components/equity-chart-client";
 
 interface Props {
   params: Promise<{ backtestId: string }>;
@@ -45,21 +44,27 @@ export default async function BacktestResultsPage({ params }: Props) {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">Backtest Report</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Backtest Report
+              </h1>
               <span
                 className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
                   execution.status === "SUCCESS"
                     ? "bg-[#00E5A0]/10 text-[#00E5A0]"
                     : execution.status === "FAILED"
-                    ? "bg-red-400/10 text-red-400"
-                    : "bg-amber-400/10 text-amber-400"
+                      ? "bg-red-400/10 text-red-400"
+                      : "bg-amber-400/10 text-amber-400"
                 }`}
               >
                 {execution.status}
               </span>
             </div>
             <p className="text-muted-foreground text-sm">
-              Workflow: <span className="font-medium text-foreground">{execution.workflow?.name}</span> · Started {new Date(execution.startedAt).toLocaleString()}
+              Workflow:{" "}
+              <span className="font-medium text-foreground">
+                {execution.workflow?.name}
+              </span>{" "}
+              · Started {new Date(execution.startedAt).toLocaleString()}
             </p>
           </div>
         </div>
@@ -85,7 +90,9 @@ export default async function BacktestResultsPage({ params }: Props) {
                   output.totalReturnPct >= 0 ? "text-[#00E5A0]" : "text-red-400"
                 }`}
               >
-                {output.totalReturnPct > 0 ? `+${output.totalReturnPct}%` : `${output.totalReturnPct}%`}
+                {output.totalReturnPct > 0
+                  ? `+${output.totalReturnPct}%`
+                  : `${output.totalReturnPct}%`}
               </p>
             </div>
 
@@ -104,9 +111,7 @@ export default async function BacktestResultsPage({ params }: Props) {
                 <span>Win Rate</span>
                 <ActivityIcon className="size-4" />
               </div>
-              <p className="text-2xl font-bold font-mono">
-                {output.winRate}%
-              </p>
+              <p className="text-2xl font-bold font-mono">{output.winRate}%</p>
             </div>
 
             <div className="rounded-xl border bg-card p-5 space-y-1">
@@ -123,8 +128,12 @@ export default async function BacktestResultsPage({ params }: Props) {
           {/* Equity Curve Chart */}
           <section className="rounded-xl border bg-card p-6 space-y-4">
             <div>
-              <h2 className="text-base font-semibold tracking-tight">Equity Curve ($10,000 Starting)</h2>
-              <p className="text-xs text-muted-foreground">Portfolio marked-to-market across backtested timestamps</p>
+              <h2 className="text-base font-semibold tracking-tight">
+                Equity Curve ($10,000 Starting)
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Portfolio marked-to-market across backtested timestamps
+              </p>
             </div>
             <div className="pt-2">
               <EquityChart data={output.equityCurve || []} />
@@ -137,27 +146,42 @@ export default async function BacktestResultsPage({ params }: Props) {
               Simulated Trades ({output.trades?.length || 0})
             </h2>
 
-            {(!output.trades || output.trades.length === 0) ? (
-              <p className="text-sm text-muted-foreground">No trades executed during this backtest run.</p>
+            {!output.trades || output.trades.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No trades executed during this backtest run.
+              </p>
             ) : (
               <div className="rounded-xl border overflow-hidden bg-card">
                 <table className="w-full text-sm">
                   <thead className="border-b bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="text-left px-5 py-3 font-medium">Timestamp</th>
-                      <th className="text-left px-5 py-3 font-medium">Symbol</th>
+                      <th className="text-left px-5 py-3 font-medium">
+                        Timestamp
+                      </th>
+                      <th className="text-left px-5 py-3 font-medium">
+                        Symbol
+                      </th>
                       <th className="text-left px-5 py-3 font-medium">Side</th>
-                      <th className="text-right px-5 py-3 font-medium font-mono">Quantity</th>
-                      <th className="text-right px-5 py-3 font-medium font-mono">Simulated Price</th>
+                      <th className="text-right px-5 py-3 font-medium font-mono">
+                        Quantity
+                      </th>
+                      <th className="text-right px-5 py-3 font-medium font-mono">
+                        Simulated Price
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {output.trades.map((trade, idx) => (
-                      <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                      <tr
+                        key={idx}
+                        className="hover:bg-muted/20 transition-colors"
+                      >
                         <td className="px-5 py-3.5 text-xs text-muted-foreground">
                           {new Date(trade.timestamp).toLocaleString()}
                         </td>
-                        <td className="px-5 py-3.5 font-medium">{trade.symbol}</td>
+                        <td className="px-5 py-3.5 font-medium">
+                          {trade.symbol}
+                        </td>
                         <td className="px-5 py-3.5">
                           <span
                             className={`font-semibold text-xs px-2 py-0.5 rounded-full ${

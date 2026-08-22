@@ -169,10 +169,6 @@ function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
     <section className="mx-auto max-w-6xl px-6 pt-16 pb-20 md:pt-24 md:pb-28">
       <div className="grid items-center gap-14 md:grid-cols-2">
         <div>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1 font-mono text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-primary" />
-            open-source · self-hostable
-          </div>
           <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
             Automate anything.
             <br />
