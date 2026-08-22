@@ -1,6 +1,7 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { topologicalSort } from "./utils";
 import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
@@ -16,7 +17,10 @@ import { slackChannel } from "./channels/slack";
 import { marketDataTriggerChannel } from "./channels/market-data-trigger";
 import { indicatorChannel } from "./channels/indicator";
 import { orderChannel } from "./channels/order";
-import { BacktestMarketDataProvider, buildBacktestSummary } from "@/features/trading/providers/backtest";
+import {
+  BacktestMarketDataProvider,
+  buildBacktestSummary,
+} from "@/features/trading/providers/backtest";
 import { getExchangeAdapter } from "@/features/trading/adapters/registry";
 import type { Trade } from "@/features/trading/providers/backtest";
 import { conditionChannel } from "./channels/condition";
@@ -134,15 +138,15 @@ export const executeWorkflow = inngest.createFunction(
           ? {
               status: ExecutionStatus.SKIPPED,
               completedAt: new Date(),
-              output: context,
+              output: context as Prisma.InputJsonValue,
               error: skippedReason,
             }
           : {
               status: ExecutionStatus.SUCCESS,
               completedAt: new Date(),
-              output: context,
+              output: context as Prisma.InputJsonValue,
             },
-      })
+      });
     });
 
     return {
@@ -213,24 +217,30 @@ export const executeBacktest = inngest.createFunction(
     // 4. Run backtest loop in-process (no step.run per candle)
     const result = await step.run("backtest-loop", async () => {
       const provider = new BacktestMarketDataProvider(
-        exchange, symbol, interval,
-        new Date(from), new Date(to),
+        exchange,
+        symbol,
+        interval,
+        new Date(from),
+        new Date(to),
       );
 
       const trades: Trade[] = [];
-      const allCandles: import("@/features/trading/adapters/types").Candle[] = [];
+      const allCandles: import("@/features/trading/adapters/types").Candle[] =
+        [];
       let context: Record<string, unknown> = {};
 
       // Stub publish for backtest (no realtime during replay)
-      const noopPublish = async () => { };
+      const noopPublish = async () => {};
       // Stub step for backtest executors (no Inngest checkpoints in inner loop)
       const backtestStep = {
         run: async (_id: string, fn: () => Promise<unknown>) => fn(),
-        sleep: async () => { },
+        sleep: async () => {},
         waitForEvent: async () => null,
-        sendEvent: async () => { },
+        sendEvent: async () => {},
         invoke: async () => null,
-      } as unknown as import("inngest").GetStepTools<import("inngest").Inngest.Any>;
+      } as unknown as import("inngest").GetStepTools<
+        import("inngest").Inngest.Any
+      >;
 
       let candle = await provider.getNextCandle();
       while (candle !== null) {

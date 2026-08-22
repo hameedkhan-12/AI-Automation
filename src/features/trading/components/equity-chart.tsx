@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, ColorType, IChartApi, ISeriesApi } from "lightweight-charts";
+import { createChart, ColorType, IChartApi, ISeriesApi, AreaSeries } from "lightweight-charts";
 
 interface EquityPoint {
   timestamp: number;
@@ -36,12 +36,12 @@ export function EquityChart({ data }: EquityChartProps) {
       },
     });
 
-    const areaSeries: ISeriesApi<"Area"> = chart.addAreaSeries({
-      lineColor: "#00E5A0",
-      topColor: "rgba(0, 229, 160, 0.3)",
-      bottomColor: "rgba(0, 229, 160, 0.0)",
-      lineWidth: 2,
-    });
+const areaSeries: ISeriesApi<"Area"> = chart.addSeries(AreaSeries, {
+  lineColor: "#00E5A0",
+  topColor: "rgba(0, 229, 160, 0.3)",
+  bottomColor: "rgba(0, 229, 160, 0.0)",
+  lineWidth: 2,
+});
 
     const sortedData = [...data]
       .sort((a, b) => a.timestamp - b.timestamp)
