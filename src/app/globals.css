@@ -416,3 +416,11 @@
     animation: none !important;
   }
 }
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 14s linear infinite;
+}

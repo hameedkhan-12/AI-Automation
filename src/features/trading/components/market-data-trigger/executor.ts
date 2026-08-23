@@ -1,4 +1,3 @@
-// src/features/trading/components/market-data-trigger/executor.ts
 import { NonRetriableError } from "inngest";
 import type { NodeExecutor } from "@/features/executions/types";
 import { marketDataTriggerChannel } from "@/inngest/channels/market-data-trigger";
@@ -13,18 +12,6 @@ type MarketDataTriggerData = {
   mode?: "live" | "backtest";
 };
 
-/**
- * MarketDataTrigger executor.
- *
- * In live / tick mode:
- *   - The candle is in context.candle (injected by /api/internal/market-tick).
- *
- * In manual canvas execution mode:
- *   - If context.candle is missing, fetches the latest market candle using the adapter.
- *
- * In backtest mode:
- *   - executeBacktest drives the loop; this executor passes through.
- */
 export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = async ({
   data,
   nodeId,

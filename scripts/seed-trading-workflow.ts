@@ -1,34 +1,3 @@
-/**
- * Seeds a ready-to-run "AAPL SMA 10/30 Crossover" workflow, fully wired
- * with the Condition node (the piece that was missing before) so it
- * actually behaves like a real strategy instead of buying unconditionally.
- *
- * Usage:
- *   npx tsx scripts/seed-trading-workflow.ts you@example.com
- *
- * If you omit the email, it uses the first user found in the database.
- *
- * What this creates, in plain terms:
- *
- *   Market Data (AAPL)
- *        │
- *        ├──> Fast SMA (10-day average)  ──┐
- *        │                                  ├──> Condition ──> Order (BUY 10 AAPL)
- *        └──> Slow SMA (30-day average)  ──┘
- *
- *   The idea: a 10-day average reacts faster to price than a 30-day
- *   average. When the fast one crosses ABOVE the slow one, it's read as
- *   "the stock's short-term trend just turned upward" — a classic,
- *   simple momentum signal. The Condition node only lets the Order node
- *   run on the exact tick that crossover happens — not on every tick.
- *
- * No Alpaca credential is attached to the Order node on purpose: with no
- * credential, it uses a simulated paper fill automatically (see the
- * order executor's hasRealCredentials check) — so this runs out of the
- * box with zero API keys required. Attach a real Alpaca credential to
- * the Order node later once you're ready to test against the real API.
- */
-
 import { prisma } from "../src/lib/db";
 import { NodeType } from "../src/generated/prisma/enums";
 
@@ -41,9 +10,6 @@ async function main() {
 
   console.log(`Seeding workflow for user: ${user.email} (${user.id})`);
 
-  // Backtest range: 6 months back from today. Long enough to give the
-  // 30-day SMA real history to work with — a short range (like a few
-  // weeks) will never produce enough candles for SMA30 to stop being null.
   const today = new Date();
   const sixMonthsAgo = new Date(today);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

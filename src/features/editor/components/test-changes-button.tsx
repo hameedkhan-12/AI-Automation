@@ -1,4 +1,3 @@
-// src/features/editor/components/test-changes-button.tsx
 "use client";
 
 import { useState } from "react";
@@ -46,14 +45,12 @@ export const TestChangesButton = ({ workflowId }: { workflowId: string }) => {
       toast.success("Testing your changes against recent executions…");
       setResolving(true);
 
-      // start() only returns an Inngest eventId — the ShadowRun row itself
-      // is created inside the function, asynchronously. Poll briefly for it
-      // by workflowId so we have a real shadowRunId to hand the sheet.
       const deadline = Date.now() + 15_000;
       const resolve = async (): Promise<void> => {
-        const latest = await queryClient.fetchQuery(
-          trpc.replay.latestForWorkflow.queryOptions({ workflowId }),
-        );
+        const latest = await queryClient.fetchQuery({
+          ...trpc.replay.latestForWorkflow.queryOptions({ workflowId }),
+          staleTime: 0,
+        });
         if (latest) {
           setResolving(false);
           setShadowRunId(latest.id);
@@ -74,10 +71,6 @@ export const TestChangesButton = ({ workflowId }: { workflowId: string }) => {
   };
 
   const isDraftDirty = () => {
-    // Kept intentionally simple: always enabled. A precise "does the draft
-    // actually differ from the saved graph" check would duplicate diffGraphs
-    // client-side just to gate a button — not worth the complexity for a
-    // low-cost action the person can just click.
     return true;
   };
 

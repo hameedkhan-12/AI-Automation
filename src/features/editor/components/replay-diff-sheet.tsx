@@ -1,4 +1,3 @@
-// src/features/editor/components/replay-diff-sheet.tsx
 "use client";
 
 import {
@@ -19,6 +18,23 @@ const DIFF_BADGE: Record<DiffType, { label: string; className: string }> = {
   NEWLY_FAILED: { label: "Newly fails", className: "bg-red-500/15 text-red-700 dark:text-red-400" },
   NEWLY_SUCCEEDED: { label: "Newly succeeds", className: "bg-green-500/15 text-green-700 dark:text-green-400" },
 };
+
+function diffKeys(
+  oldObj: Record<string, unknown> | null | undefined,
+  newObj: Record<string, unknown> | null | undefined,
+): string[] {
+  const old = oldObj ?? {};
+  const next = newObj ?? {};
+  const allKeys = new Set([...Object.keys(old), ...Object.keys(next)]);
+  const changed: string[] = [];
+  for (const key of allKeys) {
+    if (key.startsWith("__")) continue; // internal bookkeeping fields, not meaningful to a person reading this
+    if (JSON.stringify(old[key]) !== JSON.stringify(next[key])) {
+      changed.push(key);
+    }
+  }
+  return changed;
+}
 
 interface Props {
   open: boolean;
@@ -101,16 +117,43 @@ export const ReplayDiffSheet = ({ open, onOpenChange, shadowRunId }: Props) => {
                               <div className="text-muted-foreground">
                                 execution {d.originalExecutionId.slice(0, 10)}… — {DIFF_BADGE[d.diffType as DiffType]?.label ?? d.diffType}
                               </div>
-                              {(d.oldOutput != null || d.newOutput != null) && (
-                                <div className="grid grid-cols-2 gap-2">
-                                  <pre className="rounded bg-muted p-2 overflow-x-auto max-h-40">
-                                    {JSON.stringify(d.oldOutput ?? null, null, 2)}
-                                  </pre>
-                                  <pre className="rounded bg-muted p-2 overflow-x-auto max-h-40">
-                                    {JSON.stringify(d.newOutput ?? null, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
+                              {(d.oldOutput != null || d.newOutput != null) && (() => {
+                                const changedFieldNames = diffKeys(
+                                  d.oldOutput as Record<string, unknown> | null,
+                                  d.newOutput as Record<string, unknown> | null,
+                                );
+                                const old = (d.oldOutput ?? {}) as Record<string, unknown>;
+                                const next = (d.newOutput ?? {}) as Record<string, unknown>;
+
+                                if (changedFieldNames.length === 0) {
+                                  // Diffed as OUTPUT_CHANGED at the whole-object level (e.g. key
+                                  // order or an internal-only field differed) but nothing a person
+                                  // would recognize as meaningful actually changed.
+                                  return (
+                                    <div className="text-muted-foreground italic">
+                                      No meaningful field-level difference detected.
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div className="space-y-2">
+                                    <div className="text-muted-foreground">
+                                      Changed: <span className="font-mono">{changedFieldNames.join(", ")}</span>
+                                    </div>
+                                    {changedFieldNames.map((key) => (
+                                      <div key={key} className="grid grid-cols-2 gap-2">
+                                        <pre className="rounded bg-muted p-2 overflow-x-auto max-h-32">
+                                          {key}: {JSON.stringify(old[key] ?? null, null, 2)}
+                                        </pre>
+                                        <pre className="rounded bg-muted p-2 overflow-x-auto max-h-32">
+                                          {key}: {JSON.stringify(next[key] ?? null, null, 2)}
+                                        </pre>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                               {(d.oldError || d.newError) && (
                                 <div className="grid grid-cols-2 gap-2">
                                   <div className="rounded bg-red-500/10 p-2 text-red-700 dark:text-red-400">

@@ -1,4 +1,3 @@
-// src/features/executions/components/discord/executor.ts
 import Handlebars from "handlebars";
 import { decode } from "html-entities";
 import { NonRetriableError } from "inngest";

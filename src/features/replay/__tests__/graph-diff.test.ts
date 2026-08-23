@@ -1,13 +1,4 @@
-// src/features/replay/lib/__tests__/graph-diff.test.ts
-/**
- * Unit tests for diffGraphs — the piece that decides which nodes actually
- * need to re-execute during a shadow replay vs. which can safely reuse
- * their recorded output. Getting this wrong either makes the replay
- * expensive/noisy (re-running too much) or unsafe/wrong (re-using output
- * for a node whose behavior actually changed).
- *
- * Run with: npx vitest
- */
+
 import { describe, it, expect } from "vitest";
 import { diffGraphs } from "../lib/graph-diff";
 

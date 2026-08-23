@@ -1,4 +1,3 @@
-// src/inngest/functions.ts
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
 import { prisma } from "@/lib/db";
@@ -25,12 +24,6 @@ import { diffGraphs } from "@/features/replay/lib/graph-diff";
 import toposort from "toposort";
 import { ConditionNotMetError } from "@/lib/condition-not-met-error";
 
-/**
- * A generic topological sort for id/edge shapes that aren't full Prisma
- * Node/Connection records — used for the DRAFT graph during shadow replay,
- * which only ever has { id, type, data } and { fromNodeId, toNodeId }.
- * Mirrors topologicalSort() in inngest/utils.ts, minus the Prisma coupling.
- */
 function topologicalSortDraft<T extends { id: string }>(
   nodes: T[],
   connections: { fromNodeId: string; toNodeId: string }[],
@@ -145,10 +138,6 @@ export const executeWorkflow = inngest.createFunction(
       __executionId: inngestEventId,
     };
 
-    // Execute each node, recording a per-node log as we go. This log is
-    // what shadow-replay diffs against later — without it, only the final
-    // merged context was ever stored, and there was nothing to compare at
-    // node granularity.
     let skippedReason: string | null = null;
     for (const node of sortedNodes) {
       const executor = getExecutor(node.type as NodeType);
@@ -180,9 +169,6 @@ export const executeWorkflow = inngest.createFunction(
         context = nextContext;
       } catch (err) {
         if (err instanceof ConditionNotMetError) {
-          // Not a failure — a Condition node deliberately halted execution.
-          // Stop running remaining downstream nodes, but the execution as a
-          // whole is a graceful SKIPPED outcome, not FAILED.
           await step.run(`log-node-${node.id}`, () =>
             prisma.nodeExecutionLog.create({
               data: {
@@ -190,9 +176,6 @@ export const executeWorkflow = inngest.createFunction(
                 nodeId: node.id,
                 nodeType: node.type,
                 input: { data: node.data, contextSnapshot: context } as object,
-                // No `output` key at all — omitting it (rather than passing
-                // null) is the version that's valid regardless of exactly
-                // how Prisma's generated Json input types are shaped.
                 error: err.message,
                 durationMs: Date.now() - startedAt,
               },
@@ -220,11 +203,6 @@ export const executeWorkflow = inngest.createFunction(
     }
 
     await step.run("update-execution", async () => {
-      // Split into a real if/else rather than a ternary that returns two
-      // differently-shaped object literals: TypeScript's inference over
-      // that ternary produces a merged type that confuses which branch of
-      // Prisma's Json input union to match against, even though each
-      // branch alone is perfectly valid. An if/else sidesteps that.
       if (skippedReason) {
         return prisma.execution.update({
           where: { inngestEventId, workflowId },
@@ -253,19 +231,6 @@ export const executeWorkflow = inngest.createFunction(
   },
 );
 
-/**
- * executeBacktest — fast in-process backtest loop.
- *
- * Deliberately does NOT use step.run() per candle (no Inngest checkpoint per
- * tick). Running thousands of candles through the step system would be
- * prohibitively slow. Instead:
- *   - Loops all candles in-process, calling executors directly.
- *   - Collects trades emitted by ORDER nodes.
- *   - Writes ONE summary Execution record at the end.
- *
- * Tradeoff: if the function crashes mid-loop, no partial results are saved.
- * Acceptable for a portfolio demo; note in README.
- */
 export const executeBacktest = inngest.createFunction(
   {
     id: "execute-backtest",
@@ -388,32 +353,10 @@ export const executeBacktest = inngest.createFunction(
   },
 );
 
-/**
- * executeShadowReplay — replays a set of past executions through a DRAFT
- * (possibly unsaved) graph, to catch breaking changes before the person
- * hits save. This is the regression-testing feature the trading vertical's
- * live/backtest parity work generalizes into.
- *
- * Core design decision: only nodes that changed, or are topologically
- * downstream of a change (see diffGraphs), are actually re-executed. Every
- * other node reuses its recorded output from NodeExecutionLog. This is
- * deliberate, not an optimization afterthought:
- *   - Cost: unchanged AI nodes don't get real API calls fired on every test.
- *   - Signal: a trading node's live price, or an LLM's non-deterministic
- *     text, would otherwise produce diff noise on nodes that didn't
- *     actually change, training the person to ignore the diff panel.
- *   - Safety: nodes that DO need to re-execute run in "shadow" mode, so
- *     side-effecting executors (order, http-request, slack, discord) never
- *     perform their real action during a test replay.
- */
 export const executeShadowReplay = inngest.createFunction(
   {
     id: "execute-shadow-replay",
     retries: 0,
-    // Backstop: no single shadow replay run should be able to hang
-    // indefinitely, regardless of what specifically goes wrong inside it.
-    // Combined with the per-node timeout below (the more precise fix),
-    // this guarantees a bounded worst case.
     timeouts: { finish: "3m" },
   },
   { event: "workflows/shadow-replay.start" },
@@ -448,9 +391,6 @@ export const executeShadowReplay = inngest.createFunction(
 
     const { reExecuteNodeIds } = await step.run("diff-graphs", async () => {
       const diff = diffGraphs(savedWorkflow.nodes, savedWorkflow.connections, draftNodes, draftConnections);
-      // step.run's return value must be JSON-serializable — a Set silently
-      // round-trips as `{}`. Convert to a plain array here; reconstructed
-      // back into a Set immediately below, outside the step.
       return { reExecuteNodeIds: [...diff.reExecuteNodeIds] };
     });
     const reExecuteSet = new Set(reExecuteNodeIds);
@@ -476,11 +416,13 @@ export const executeShadowReplay = inngest.createFunction(
 
         for (const node of sortedDraftNodes) {
           const originalLog = originalLogs.get(node.id);
+          const canReuseOutput = !reExecuteSet.has(node.id) && originalLog?.output;
+          const canReuseSkip = !reExecuteSet.has(node.id) && !originalLog?.output && originalLog?.error;
 
-          if (!reExecuteSet.has(node.id) && originalLog?.output) {
+          if (canReuseOutput) {
             // Unchanged, and not downstream of anything that changed —
             // reuse the recorded output instead of re-executing.
-            context = originalLog.output as Record<string, unknown>;
+            context = originalLog!.output as Record<string, unknown>;
             await prisma.replayDiff.create({
               data: {
                 shadowRunId: shadowRun.id,
@@ -493,18 +435,22 @@ export const executeShadowReplay = inngest.createFunction(
             continue;
           }
 
+          if (canReuseSkip) {
+            await prisma.replayDiff.create({
+              data: {
+                shadowRunId: shadowRun.id,
+                originalExecutionId: executionId,
+                nodeId: node.id,
+                nodeType: node.type ?? "UNKNOWN",
+                diffType: "REUSED",
+                oldError: originalLog!.error,
+              },
+            });
+            break;
+          }
+
           const executor = getExecutor(node.type as NodeType);
           try {
-            // Hard per-node timeout — no single node executor should be
-            // able to stall the entire replay silently. If it fires, this
-            // node gets recorded as NEWLY_FAILED with a clear timeout
-            // message instead of the whole run hanging indefinitely.
-            // Note: this bounds how long we WAIT, it doesn't truly cancel
-            // the underlying executor call (no AbortController threaded
-            // through executors yet) — if the real cause is a stuck
-            // network call, that call may keep running in the background
-            // even after this reports a timeout. Still strictly better
-            // than an unbounded hang with no visible failure at all.
             const NODE_TIMEOUT_MS = 20_000;
             let timeoutHandle: ReturnType<typeof setTimeout>;
             const nextContext = await Promise.race([
@@ -513,7 +459,13 @@ export const executeShadowReplay = inngest.createFunction(
                 nodeId: node.id,
                 userId,
                 context,
-                step,
+                step: {
+                  run: async (_id: string, fn: () => Promise<unknown>) => fn(),
+                  sleep: async () => {},
+                  waitForEvent: async () => null,
+                  sendEvent: async () => {},
+                  invoke: async () => null,
+                } as unknown as typeof step,
                 publish: async () => {},
                 mode: "shadow",
               }).finally(() => clearTimeout(timeoutHandle)),
@@ -549,15 +501,14 @@ export const executeShadowReplay = inngest.createFunction(
             context = nextContext;
           } catch (err) {
             if (err instanceof ConditionNotMetError) {
-              // A condition legitimately not being met isn't itself a
-              // regression — record it and stop this execution's replay.
+              const isSameOutcome = originalLog?.error === err.message;
               await prisma.replayDiff.create({
                 data: {
                   shadowRunId: shadowRun.id,
                   originalExecutionId: executionId,
                   nodeId: node.id,
                   nodeType: node.type ?? "UNKNOWN",
-                  diffType: originalLog?.error ? "UNCHANGED" : "OUTPUT_CHANGED",
+                  diffType: isSameOutcome ? "UNCHANGED" : "OUTPUT_CHANGED",
                   oldError: originalLog?.error ?? undefined,
                   newError: err.message,
                 },
@@ -565,15 +516,17 @@ export const executeShadowReplay = inngest.createFunction(
               break;
             }
 
+            const genuinelyNewError = err instanceof Error ? err.message : String(err);
+            const isSameFailure = originalLog?.error === genuinelyNewError;
             await prisma.replayDiff.create({
               data: {
                 shadowRunId: shadowRun.id,
                 originalExecutionId: executionId,
                 nodeId: node.id,
                 nodeType: node.type ?? "UNKNOWN",
-                diffType: originalLog?.error ? "UNCHANGED" : "NEWLY_FAILED",
+                diffType: isSameFailure ? "UNCHANGED" : "NEWLY_FAILED",
                 oldError: originalLog?.error ?? undefined,
-                newError: err instanceof Error ? err.message : String(err),
+                newError: genuinelyNewError,
               },
             });
             break; // stop replaying THIS execution, move to the next one
