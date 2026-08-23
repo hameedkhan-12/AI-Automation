@@ -1,3 +1,4 @@
+// prisma/schema.prisma (complete file — replace yours entirely)
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -106,6 +107,7 @@ model Workflow {
   nodes Node[]
   connections Connection[]
   executions Execution[]
+  shadowRuns ShadowRun[]
 
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -189,7 +191,60 @@ model Execution {
 
   inngestEventId String @unique
 
+  initialData Json?
+
   output Json?
+
+  nodeLogs NodeExecutionLog[]
+}
+
+// Per-node execution record — what shadow-replay diffs against. Without
+model NodeExecutionLog {
+  id          String    @id @default(cuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  nodeId      String
+  nodeType    String
+  input       Json
+  output      Json?
+  error       String?   @db.Text
+  durationMs  Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([executionId, nodeId])
+  @@index([executionId])
+}
+
+// A single "test my draft graph edits against real history" run.
+model ShadowRun {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  draftGraph  Json
+  status      String   @default("RUNNING") // RUNNING | COMPLETE | FAILED
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  diffs ReplayDiff[]
+}
+
+// One row per (replayed execution, node) — the actual diff result.
+model ReplayDiff {
+  id                  String    @id @default(cuid())
+  shadowRunId         String
+  shadowRun           ShadowRun @relation(fields: [shadowRunId], references: [id], onDelete: Cascade)
+  originalExecutionId String
+  nodeId              String
+  nodeType            String
+  // REUSED | UNCHANGED | OUTPUT_CHANGED | NEWLY_FAILED | NEWLY_SUCCEEDED
+  diffType            String
+  oldOutput           Json?
+  newOutput           Json?
+  oldError            String?   @db.Text
+  newError            String?   @db.Text
+  createdAt           DateTime  @default(now())
+
+  @@index([shadowRunId])
 }
 
 // ─── Trading Models ─────────────────────────────────────────────────────────
@@ -199,7 +254,7 @@ model IndicatorState {
   nodeId     String
   workflowId String
   key        String   // e.g. "sma_20", "prices"
-  value      Json     
+  value      Json     // rolling price buffer or current computed value
   updatedAt  DateTime @updatedAt
 
   @@unique([nodeId, key])
@@ -216,6 +271,7 @@ model PaperPosition {
   @@unique([userId, symbol])
 }
 
+// Full order history for paper trades.
 model PaperOrder {
   id          String   @id @default(cuid())
   userId      String
@@ -225,8 +281,6 @@ model PaperOrder {
   quantity    Float
   filledPrice Float?
   status      String   // "FILLED" | "PENDING" | "REJECTED"
-  // Idempotency key passed to Alpaca as client_order_id.
-  // Format: "{executionId}-{nodeId}" — prevents duplicate fills on retry.
   clientOrderId String? @unique
   createdAt   DateTime @default(now())
 }

@@ -24,6 +24,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
   context,
   step,
   publish,
+  mode = "live",
 }) => {
   await publish(
     slackChannel().status({
@@ -55,6 +56,18 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           }),
         );
         throw new NonRetriableError("Slack node: Webhook URL is required");
+      }
+
+      // Shadow-replay dry-run: never actually post to a real Slack channel
+      // during a test replay.
+      if (mode === "shadow") {
+        return {
+          ...context,
+          [data.variableName ?? "slackResult"]: {
+            messageContent: content.slice(0, 2000),
+            __shadowReplaySimulated: true,
+          },
+        };
       }
 
       await ky.post(data.webhookUrl, {

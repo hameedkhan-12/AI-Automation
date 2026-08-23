@@ -1,3 +1,4 @@
+// src/features/executions/components/discord/executor.ts
 import Handlebars from "handlebars";
 import { decode } from "html-entities";
 import { NonRetriableError } from "inngest";
@@ -25,6 +26,7 @@ export const discordExecutor: NodeExecutor<DiscordData> = async ({
   context,
   step,
   publish,
+  mode = "live",
 }) => {
   await publish(
     discordChannel().status({
@@ -59,6 +61,18 @@ export const discordExecutor: NodeExecutor<DiscordData> = async ({
           }),
         );
         throw new NonRetriableError("Discord node: Webhook URL is required");
+      }
+
+      // Shadow-replay dry-run: never actually post to a real Discord
+      // channel during a test replay.
+      if (mode === "shadow") {
+        return {
+          ...context,
+          [data.variableName ?? "discordResult"]: {
+            messageContent: content.slice(0, 2000),
+            __shadowReplaySimulated: true,
+          },
+        };
       }
 
       await ky.post(data.webhookUrl, {

@@ -1,3 +1,4 @@
+// src/features/trading/components/order/dialog.tsx
 "use client";
 
 import {
@@ -20,7 +21,7 @@ import { CredentialType } from "@/generated/prisma/enums";
 
 const formSchema = z.object({
   exchange: z.enum(["alpaca"]),
-  credentialId: z.string().min(1, "Credential is required"),
+  credentialId: z.string().optional(),
   symbol: z.string().min(1, "Symbol is required"),
   side: z.enum(["BUY", "SELL"]),
   quantity: z.number().positive("Quantity must be positive"),
@@ -80,16 +81,19 @@ export const OrderDialog = ({ open, onOpenChange, onSubmit, defaultValues = {} }
           <form onSubmit={form.handleSubmit((v) => { onSubmit(v); onOpenChange(false); })} className="space-y-6 mt-4">
             <FormField control={form.control} name="credentialId" render={({ field }) => (
               <FormItem>
-                <FormLabel>Alpaca Credential</FormLabel>
+                <FormLabel>Alpaca Credential (optional)</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Select credential" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger><SelectValue placeholder="None — runs as a simulated paper fill" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {(alpacaCreds ?? []).map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>Add Alpaca credentials in the Credentials page</FormDescription>
+                <FormDescription>
+                  Leave unset to simulate fills without a real broker connection. Add a credential
+                  on the Credentials page when you're ready to place real paper orders on Alpaca.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )} />

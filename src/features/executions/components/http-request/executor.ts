@@ -24,6 +24,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   context,
   step,
   publish,
+  mode = "live",
 }) => {
   await publish(
     httpRequestChannel().status({
@@ -66,6 +67,19 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
       const endpoint = Handlebars.compile(data.endpoint)(context);
       const method = data.method;
+
+      if (mode === "shadow") {
+        return {
+          ...context,
+          [data.variableName]: {
+            httpResponse: {
+              status: 200,
+              statusText: "OK (simulated — shadow replay)",
+              data: { __shadowReplaySimulated: true, wouldHaveCalled: endpoint, method },
+            },
+          },
+        };
+      }
 
       const options: KyOptions = { method };
 

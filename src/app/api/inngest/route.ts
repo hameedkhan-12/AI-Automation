@@ -1,11 +1,12 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
-import { executeWorkflow, executeBacktest } from "@/inngest/functions";
+import { executeWorkflow, executeBacktest, executeShadowReplay } from "@/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     executeWorkflow,
     executeBacktest,
+    executeShadowReplay,
   ],
 });
