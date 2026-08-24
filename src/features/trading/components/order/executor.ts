@@ -80,9 +80,6 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
         }
       }
 
-      // 2. Place order via adapter — simulate ONLY when credentials are
-      // genuinely absent. A real adapter error is allowed to throw and
-      // propagate out of this step.run() (see outer try/catch below).
       const currentPrice = (context.candle as Candle | undefined)?.close ?? FALLBACK_SIMULATED_PRICE;
       const hasRealCredentials =
         Boolean(credentials.apiKey) && credentials.apiKey !== "encrypted_placeholder_value";
@@ -91,10 +88,7 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
       // credentials — a replay must not have real side effects. This is
       // the dry-run branch for the ORDER node.
       const shouldSimulate = mode === "shadow" || !hasRealCredentials;
-
-      // Fail with a clear, actionable message rather than letting a
-      // malformed credential (key present, secret missing) reach Alpaca and
-      // come back as an opaque 401 unauthorized.
+      
       if (mode === "live" && hasRealCredentials && !credentials.apiSecret) {
         throw new Error(
           "Alpaca credential is missing its secret key. Edit the credential and re-enter both the API Key ID and Secret Key.",

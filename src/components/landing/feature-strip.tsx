@@ -1,19 +1,5 @@
 import type { CSSProperties } from "react";
 
-/* ------------------------------------------------------------------
- * FeatureStrip
- *
- * Matches the section in the reference directly below the Hero:
- *   - A centred connector diagram (the scroll-mouse + branching dashes)
- *     sourced from the SVG asset the user places at
- *     /public/images/hero/download (19).svg
- *   - Three columns, each with a gradient icon chip (built inline from
- *     the brand-mesh triangle path already in the SVG assets), a bold
- *     title, and two lines of description
- *
- * The background is intentionally transparent / `brand-dark-band` so
- * it continues the hero gradient with no seam between sections.
- * ------------------------------------------------------------------ */
 
 const FEATURES = [
   {
@@ -39,9 +25,6 @@ const FEATURES = [
 export function FeatureStrip() {
   return (
     <section className="dark relative overflow text-white -mt-20">
-      {/* Connector diagram — scroll-mouse icon at top with dashed branches
-          leading down to the three columns.  The user places this SVG at
-          /public/images/hero/download (19).svg. */}
       <div className="mx-auto flex max-w-5xl flex-col items-center px-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -55,9 +38,6 @@ export function FeatureStrip() {
         <div className="mt-2 grid w-full grid-cols-1 gap-12 pb-20 text-center sm:grid-cols-3 sm:gap-6">
           {FEATURES.map((f) => (
             <div key={f.title} className="flex flex-col items-center gap-4">
-              {/* Gradient icon chip — 56×56 rounded-2xl with the brand
-                  lavender→orange→violet mesh, exactly matching the
-                  reference chips */}
               <div className="relative flex size-14 items-center justify-center overflow-hidden rounded-2xl shadow-lg">
                 {/* mesh background */}
                 <span
@@ -90,10 +70,6 @@ export function FeatureStrip() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Inline icon SVGs — white strokes on transparent, sized to 26×26,   */
-/* matching the reference chips' icon style.                           */
-/* ------------------------------------------------------------------ */
 
 function LiveIntelligenceIcon() {
   /* Atom / circuit-node icon (Live Intelligence) */

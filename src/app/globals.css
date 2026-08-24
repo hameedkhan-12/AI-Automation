@@ -69,14 +69,6 @@
 }
 
 :root {
-  /* ------------------------------------------------------------------ */
-  /* Landing page brand palette — sourced directly from the reference   */
-  /* design's exported swatches (figma-colors.json / CSS Peeper scan):  */
-  /*   #030014 bg · #FC5F2A / #DA5012 orange · #593BFF violet           */
-  /*   #DED8FF / #DDD7FF lavender · #272536 / #292737 / #2A2A3B surfaces*/
-  /* Independent of the app's --primary token, so the marketing site    */
-  /* can use its own identity without touching in-app component colors. */
-  /* ------------------------------------------------------------------ */
   --brand-violet-50: #f5f3ff;
   --brand-violet-100: #e6e2ff;
   --brand-violet-300: #a493ff;
@@ -196,10 +188,6 @@
   --popover-foreground: #f5f5f7;
   --primary: #593bff;
   --primary-foreground: #ffffff;
-  /* NOTE: --secondary must stay a flat color, never a gradient — it's
-     consumed through Tailwind's bg-secondary/<alpha> utility, which needs
-     a single color to apply opacity to. Gradient looks live in the
-     dedicated --brand-gradient-* tokens further down instead. */
   --secondary: #272536;
   --secondary-foreground: #d4d4e0;
   --muted: #1b1a1f;
@@ -428,20 +416,6 @@
     var(--card);
 }
 
-/* ---------------------------------------------------------------------- */
-/* Reference-site gradient system                                         */
-/*                                                                          */
-/* The reference design uses ~20 near-identical 3-stop diagonal gradients */
-/* (lavender -> orange -> violet, or white -> violet) differing only by   */
-/* angle — almost certainly one "mesh" treatment applied per-element with */
-/* a randomized angle, not 20 distinct designs. Rather than hardcoding    */
-/* every literal gradient as its own class (unmaintainable, ~20 classes  */
-/* that are 95% duplicate code), this collapses them into a small number */
-/* of *parametrized* primitives driven by CSS custom properties. Callers */
-/* override just the angle (or a stop) via inline style, e.g.:            */
-/*   <div className="brand-mesh" style={{ "--mesh-angle": "128deg" }} /> */
-/* ---------------------------------------------------------------------- */
-
 .brand-mesh {
   --mesh-angle: 136deg;
   --mesh-from: var(--brand-lavender-100);
@@ -500,10 +474,6 @@
   background: linear-gradient(rgba(221, 215, 255, 0.1) 0%, rgba(220, 214, 255, 0) 100%);
 }
 
-/* One-element gradient border (padding-box/border-box trick — no wrapper
-   div, no pseudo-element needed). Used for FAQ rows, eyebrow pills, and
-   any other violet->orange outlined chip. Override --ring-from/--ring-to
-   or --ring-angle per instance if a different pair/angle is needed. */
 .brand-ring-border {
   --ring-angle: 135deg;
   --ring-from: var(--brand-violet-500);

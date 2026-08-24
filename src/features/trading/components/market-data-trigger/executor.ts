@@ -33,15 +33,6 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
 
   let candle = context.candle as Candle | undefined;
 
-  // Shadow replay must NEVER fetch live market data — a replay is testing
-  // what would happen to a PAST execution's data through the new graph, not
-  // "what's the price right now." Fetching live data here would be both
-  // semantically wrong (comparing against a moving target, not the
-  // original input) and a real-network dependency inside what's supposed
-  // to be a fast, isolated test. If no candle survived in the replayed
-  // context (e.g. this execution predates per-node logging, or came from
-  // a backtest run, which doesn't yet record per-node history), fail
-  // clearly instead of silently substituting today's price.
   if (!candle && mode === "shadow") {
     throw new NonRetriableError(
       "Shadow replay: no recorded candle available for this execution to replay — " +

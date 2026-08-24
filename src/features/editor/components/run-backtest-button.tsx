@@ -19,13 +19,6 @@ type MarketDataNodeData = {
   backtestTo?: string;
 };
 
-/**
- * Distinct from ExecuteWorkflowButton on purpose: "Execute workflow" always
- * runs the single-shot LIVE path (executeWorkflow), even if a Market Data
- * node's mode is set to "backtest" — that mode flag was previously never
- * read by anything. This button is the thing that actually calls
- * executeBacktest and loops the configured date range.
- */
 export const RunBacktestButton = ({ workflowId }: { workflowId: string }) => {
   const editor = useAtomValue(editorAtom);
   const router = useRouter();
@@ -76,18 +69,10 @@ export const RunBacktestButton = ({ workflowId }: { workflowId: string }) => {
       toast.success("Backtest started — replaying historical candles");
       setPolling(true);
 
-      // The Inngest function runs asynchronously; poll briefly for the
-      // resulting Execution record (matched by inngestEventId) so we can
-      // route straight to it instead of leaving the person to go find it.
       const deadline = Date.now() + 30_000;
       const poll = async (): Promise<void> => {
         const execution = await queryClient.fetchQuery({
           ...trpc.trading.backtest.status.queryOptions({ eventId }),
-          // Same fix as the Test Changes button: this is a tight polling
-          // loop deliberately checking for a status change. The app's
-          // global 30s staleTime would otherwise return the same cached
-          // "still pending" snapshot for up to 30s at a time instead of
-          // actually re-checking on each 1.5s tick.
           staleTime: 0,
         });
 
