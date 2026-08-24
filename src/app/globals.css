@@ -524,6 +524,21 @@
   animation: spin-slow 14s linear infinite;
 }
 
+@keyframes spin-reverse-slow {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+.animate-spin-slower {
+  animation: spin-slow 46s linear infinite;
+}
+.animate-spin-reverse-slower {
+  animation: spin-reverse-slow 60s linear infinite;
+}
+
 @keyframes float-slow {
 
   0%,
@@ -566,6 +581,8 @@
   .animate-bubble-float,
   .animate-soft-rise,
   .animate-spin-slow,
+  .animate-spin-slower,
+  .animate-spin-reverse-slower,
   .animate-float-slow,
   .animate-float-slow-alt {
     animation: none !important;

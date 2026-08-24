@@ -24,7 +24,7 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="brand-dark-band relative overflow-hidden text-white">
+    <footer className="dark relative overflow-hidden text-white">
       <div className="absolute inset-x-0 top-0 border-t border-white/10" />
 
       <div className="pointer-events-none absolute inset-0 z-0">
@@ -49,11 +49,12 @@ export function Footer() {
               className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2"
             >
               <span className="brand-logo-mark flex size-6 items-center justify-center rounded-md">
-                <WorkflowIcon className="size-3.5 text-white" strokeWidth={2.5} />
+                <WorkflowIcon
+                  className="size-3.5 text-white"
+                  strokeWidth={2.5}
+                />
               </span>
-              <span className="text-lg font-medium tracking-tight">
-                FLUX
-              </span>
+              <span className="text-lg font-medium tracking-tight">FLUX</span>
             </Link>
             <p className="mt-6 text-sm text-white">
               &copy; {new Date().getFullYear()}{" "}
@@ -102,9 +103,7 @@ export function Footer() {
             </p>
             <div className="mt-5 flex flex-col gap-5">
               <div>
-                <p className="text-sm font-medium text-white/80">
-                  Community:
-                </p>
+                <p className="text-sm font-medium text-white/80">Community:</p>
                 <a
                   href={GITHUB_URL}
                   target="_blank"
@@ -115,9 +114,7 @@ export function Footer() {
                 </a>
               </div>
               <div>
-                <p className="text-sm font-medium text-white">
-                  Mail us:
-                </p>
+                <p className="text-sm font-medium text-white">Mail us:</p>
                 <a
                   href="mailto:hello@flux.dev"
                   className="text-base text-white/90 transition-colors hover:text-white"
