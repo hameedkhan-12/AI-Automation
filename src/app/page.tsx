@@ -10,6 +10,7 @@ import { Pricing } from "@/components/landing/pricing";
 import { Teams } from "@/components/landing/teams";
 import { Testimonials } from "@/components/landing/testimonials";
 import { auth } from "@/lib/auth";
+import { FeatureStrip } from "@/components/landing/feature-strip";
 
 export default async function Home() {
   const session = await auth.api.getSession({
@@ -21,6 +22,7 @@ export default async function Home() {
     <div className="dark bg-background  min-h-screen text-foreground">
       <Nav isAuthenticated={isAuthenticated} />
       <Hero isAuthenticated={isAuthenticated} />
+      <FeatureStrip />
       <FeaturesBento />
       <HowItWorks />
       <Teams />
