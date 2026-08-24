@@ -27,6 +27,11 @@ const { prisma } = await import("@/lib/db");
 const { getExchangeAdapter } = await import("../../../adapters/registry");
 const { orderExecutor } = await import("../executor");
 
+type OrderExecutorResult = Record<string, unknown> & {
+  orderResult: import("../../../adapters/types").OrderResult;
+};
+const asOrderResult = (result: unknown) => result as OrderExecutorResult;
+
 const stubStep = { run: async (_id: string, fn: () => Promise<unknown>) => fn() } as never;
 
 const validData = {
@@ -64,7 +69,7 @@ describe("orderExecutor — no credentials attached (deliberate simulated fill)"
 
   it("returns a simulated FILLED result, using the candle's close price", async () => {
     const context = { candle: { close: 123.45 }, __executionId: "exec-1" };
-    const result = await orderExecutor({ ...baseParams, data: validData, context, mode: "live" });
+    const result = asOrderResult(await orderExecutor({ ...baseParams, data: validData, context, mode: "live" }));
 
     expect(result.orderResult.status).toBe("FILLED");
     expect(result.orderResult.filledPrice).toBe(123.45);
@@ -72,22 +77,22 @@ describe("orderExecutor — no credentials attached (deliberate simulated fill)"
   });
 
   it("falls back to the fixed simulated price when no candle is present", async () => {
-    const result = await orderExecutor({
+    const result = asOrderResult(await orderExecutor({
       ...baseParams,
       data: validData,
       context: { __executionId: "exec-1" },
       mode: "live",
-    });
+    }));
     expect(result.orderResult.filledPrice).toBe(181.9);
   });
 
   it("still persists a PaperOrder and PaperPosition in live mode", async () => {
-    await orderExecutor({
+    asOrderResult(await orderExecutor({
       ...baseParams,
       data: validData,
       context: { candle: { close: 100 }, __executionId: "exec-1" },
       mode: "live",
-    });
+    }));
 
     expect(prisma.paperOrder.upsert).toHaveBeenCalledTimes(1);
     expect(prisma.paperPosition.upsert).toHaveBeenCalledTimes(1);
@@ -150,12 +155,12 @@ describe("orderExecutor — real credentials, real adapter errors must propagate
     });
     (getExchangeAdapter as ReturnType<typeof vi.fn>).mockReturnValue({ placeOrder });
 
-    const result = await orderExecutor({
+    const result = asOrderResult(await orderExecutor({
       ...baseParams,
       data: { ...validData, credentialId: "cred-1" },
       context: { candle: { close: 100 }, __executionId: "exec-1" },
       mode: "live",
-    });
+    }));
 
     expect(result.orderResult.orderId).toBe("alpaca-order-1");
     expect(prisma.paperOrder.upsert).toHaveBeenCalledTimes(1);
@@ -167,19 +172,19 @@ describe("orderExecutor — idempotency", () => {
 
   it("derives a deterministic clientOrderId from executionId + nodeId (same inputs -> same id)", async () => {
     const context = { candle: { close: 100 }, __executionId: "exec-42" };
-    const first = await orderExecutor({ ...baseParams, data: validData, context, mode: "live" });
-    const second = await orderExecutor({ ...baseParams, data: validData, context, mode: "live" });
+    const first = asOrderResult(await orderExecutor({ ...baseParams, data: validData, context, mode: "live" }));
+    const second = asOrderResult(await orderExecutor({ ...baseParams, data: validData, context, mode: "live" }));
 
     expect(first.orderResult.orderId).toBe(second.orderResult.orderId);
   });
 
   it("upserts (not creates) the PaperOrder, keyed by clientOrderId — safe under Inngest step retry", async () => {
-    await orderExecutor({
+    asOrderResult(await orderExecutor({
       ...baseParams,
       data: validData,
       context: { candle: { close: 100 }, __executionId: "exec-42" },
       mode: "live",
-    });
+    }));
 
     const call = (prisma.paperOrder.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(call.where.clientOrderId).toBeDefined();
@@ -197,23 +202,23 @@ describe("orderExecutor — shadow-replay mode must NEVER have real side effects
     const placeOrder = vi.fn().mockResolvedValue({ orderId: "should-never-happen", status: "FILLED" });
     (getExchangeAdapter as ReturnType<typeof vi.fn>).mockReturnValue({ placeOrder });
 
-    await orderExecutor({
+    asOrderResult(await orderExecutor({
       ...baseParams,
       data: { ...validData, credentialId: "cred-1" },
       context: { candle: { close: 100 }, __executionId: "exec-1" },
       mode: "shadow",
-    });
+    }));
 
     expect(placeOrder).not.toHaveBeenCalled();
   });
 
   it("does not write PaperOrder or PaperPosition rows", async () => {
-    await orderExecutor({
+    asOrderResult(await orderExecutor({
       ...baseParams,
       data: validData,
       context: { candle: { close: 100 }, __executionId: "exec-1" },
       mode: "shadow",
-    });
+    }));
 
     expect(prisma.paperOrder.upsert).not.toHaveBeenCalled();
     expect(prisma.paperPosition.upsert).not.toHaveBeenCalled();
@@ -222,12 +227,12 @@ describe("orderExecutor — shadow-replay mode must NEVER have real side effects
   });
 
   it("still returns a usable simulated result for diffing purposes", async () => {
-    const result = await orderExecutor({
+    const result = asOrderResult(await orderExecutor({
       ...baseParams,
       data: validData,
       context: { candle: { close: 100 }, __executionId: "exec-1" },
       mode: "shadow",
-    });
+    }));
 
     expect(result.orderResult.status).toBe("FILLED");
   });
