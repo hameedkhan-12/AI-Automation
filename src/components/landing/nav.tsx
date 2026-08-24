@@ -15,17 +15,17 @@ export function Nav({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <header
       id="top"
-      className="brand-dark-band bg-background sticky top-0 z-30 border-b border-white/10 text-white"
+      className="fixed inset-x-0 top-0 z-40 text-white"
     >
       <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-6">
-        <Link href="#top" className="flex items-center gap-2">
+        <Link href="#top" className="flex items-center gap-2.5">
           <span className="brand-logo-mark flex size-7 items-center justify-center rounded-lg shadow-sm">
             <WorkflowIcon className="size-4 text-white" strokeWidth={2.5} />
           </span>
           <span className="text-[22px] font-medium tracking-tight">FLUX</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1.5 text-sm text-white/70 md:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1.5 text-sm text-white/70 backdrop-blur-sm md:flex">
           {NAV_LINKS.map((link) =>
             link.external ? (
               <a
@@ -49,12 +49,12 @@ export function Nav({ isAuthenticated }: { isAuthenticated: boolean }) {
           )}
         </nav>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <Button
               size="sm"
               asChild
-              className="rounded-full bg-white text-[var(--brand-violet-900)] hover:bg-white/90"
+              className="rounded-full bg-[var(--brand-surface-2)] text-white shadow-sm hover:bg-[var(--brand-surface-4)]"
             >
               <Link href="/workflows">
                 Dashboard
@@ -63,18 +63,16 @@ export function Nav({ isAuthenticated }: { isAuthenticated: boolean }) {
             </Button>
           ) : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="hidden text-white hover:bg-white/10 hover:text-white sm:inline-flex"
+              <Link
+                href="/login"
+                className="hidden text-sm text-white/70 transition-colors hover:text-white sm:inline-block"
               >
-                <Link href="/login">Sign in</Link>
-              </Button>
+                Sign in
+              </Link>
               <Button
                 size="sm"
                 asChild
-                className="rounded-full bg-white text-[var(--brand-violet-900)] hover:bg-white/90"
+                className="rounded-full bg-[var(--brand-surface-2)] px-5 text-white shadow-sm hover:bg-[var(--brand-surface-4)]"
               >
                 <Link href="/signup">Get started</Link>
               </Button>

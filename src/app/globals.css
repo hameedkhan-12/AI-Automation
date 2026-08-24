@@ -69,22 +69,33 @@
 }
 
 :root {
-  /* Landing page brand palette (independent of the app's --primary token,
-     so the marketing site can use its own violet/blue identity without
-     touching in-app component colors). */
-  --brand-violet-50: #f4f1ff;
-  --brand-violet-100: #e7e0ff;
-  --brand-violet-300: #b2a1f7;
-  --brand-violet-500: #7c5cf0;
-  --brand-violet-600: #6a45e8;
-  --brand-violet-900: #1b1240;
-  --brand-violet-950: #120b2c;
-  --brand-pink-400: #e08bf0;
-  --brand-blue-400: #4f8cff;
-  --brand-orange-400: #ff9d52;
-  --brand-orange-500: #ff8a3d;
-  --brand-orange-600: #f26f1f;
-  --brand-ink: #0d0821;
+  /* ------------------------------------------------------------------ */
+  /* Landing page brand palette — sourced directly from the reference   */
+  /* design's exported swatches (figma-colors.json / CSS Peeper scan):  */
+  /*   #030014 bg · #FC5F2A / #DA5012 orange · #593BFF violet           */
+  /*   #DED8FF / #DDD7FF lavender · #272536 / #292737 / #2A2A3B surfaces*/
+  /* Independent of the app's --primary token, so the marketing site    */
+  /* can use its own identity without touching in-app component colors. */
+  /* ------------------------------------------------------------------ */
+  --brand-violet-50: #f5f3ff;
+  --brand-violet-100: #e6e2ff;
+  --brand-violet-300: #a493ff;
+  --brand-violet-500: #593bff;
+  --brand-violet-600: #4c32d9;
+  --brand-violet-900: #180f4f;
+  --brand-violet-950: #0d0730;
+  --brand-lavender-100: #ded8ff;
+  --brand-lavender-200: #ddd7ff;
+  --brand-orange-400: #fd7c50;
+  --brand-orange-500: #fc5f2a;
+  --brand-orange-600: #da5012;
+  --brand-pink-400: var(--brand-orange-400);
+  --brand-blue-400: var(--brand-violet-300);
+  --brand-ink: #030014;
+  --brand-surface-1: #141128;
+  --brand-surface-2: #272536;
+  --brand-surface-3: #292737;
+  --brand-surface-4: #2a2a3b;
   --brand-line: color-mix(in oklch, var(--brand-violet-500) 22%, transparent);
   --success: #16a34a;
   --success-foreground: #ffffff;
@@ -93,17 +104,23 @@
 .dark {
   --brand-violet-50: #17102e;
   --brand-violet-100: #1e1640;
-  --brand-violet-300: #4b3a8f;
-  --brand-violet-500: #7c5cf0;
-  --brand-violet-600: #8f6ffa;
-  --brand-violet-900: #0c0820;
-  --brand-violet-950: #08051a;
-  --brand-pink-400: #e8a4f5;
-  --brand-blue-400: #6ea3ff;
-  --brand-orange-400: #ffab6b;
-  --brand-orange-500: #ff9451;
-  --brand-orange-600: #ffab6b;
-  --brand-ink: #05050a;
+  --brand-violet-300: #6a56d0;
+  --brand-violet-500: #593bff;
+  --brand-violet-600: #7360ff;
+  --brand-violet-900: #180f4f;
+  --brand-violet-950: #0d0730;
+  --brand-lavender-100: #ded8ff;
+  --brand-lavender-200: #ddd7ff;
+  --brand-orange-400: #fd8a63;
+  --brand-orange-500: #fc5f2a;
+  --brand-orange-600: #da5012;
+  --brand-pink-400: var(--brand-orange-400);
+  --brand-blue-400: var(--brand-violet-300);
+  --brand-ink: #030014;
+  --brand-surface-1: #141128;
+  --brand-surface-2: #272536;
+  --brand-surface-3: #292737;
+  --brand-surface-4: #2a2a3b;
   --brand-line: color-mix(in oklch, var(--brand-violet-500) 30%, transparent);
   --success: #22c55e;
   --success-foreground: #05050a;
@@ -173,22 +190,26 @@
 .dark {
   --background: #030014;
   --foreground: #f5f5f7;
-  --card: #101018;
+  --card: #141128;
   --card-foreground: #f5f5f7;
-  --popover: #101018;
+  --popover: #141128;
   --popover-foreground: #f5f5f7;
-  --primary: #7c5cf0;
+  --primary: #593bff;
   --primary-foreground: #ffffff;
-  --secondary: linear-gradient(rgb(89, 59, 255) 0%, rgb(222, 216, 255) 100%);
+  /* NOTE: --secondary must stay a flat color, never a gradient — it's
+     consumed through Tailwind's bg-secondary/<alpha> utility, which needs
+     a single color to apply opacity to. Gradient looks live in the
+     dedicated --brand-gradient-* tokens further down instead. */
+  --secondary: #272536;
   --secondary-foreground: #d4d4e0;
-  --muted: #15151f;
+  --muted: #1b1a1f;
   --muted-foreground: #8b8b9e;
-  --accent: #1c1c2b;
+  --accent: #292737;
   --accent-foreground: #c9c9e0;
   --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: #1f1f2e;
-  --input: #1f1f2e;
-  --ring: #7c5cf0;
+  --border: #2a2a3b;
+  --input: #2a2a3b;
+  --ring: #593bff;
   --chart-1: oklch(0.7156 0.0605 248.6845);
   --chart-2: oklch(0.7693 0.0876 34.1875);
   --chart-3: oklch(0.5778 0.0759 254.1573);
@@ -196,12 +217,12 @@
   --chart-5: oklch(0.425241 0.0952 264.0306);
   --sidebar: #0a0a12;
   --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #7c5cf0;
+  --sidebar-primary: #593bff;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1c1c2b;
   --sidebar-accent-foreground: #c9c9e0;
   --sidebar-border: #1f1f2e;
-  --sidebar-ring: #7c5cf0;
+  --sidebar-ring: #593bff;
   --destructive-foreground: #ffffff;
   --radius: 0.425rem;
   --font-sans: "General Sans", "Inter", sans-serif;
@@ -394,7 +415,7 @@
       color-mix(in oklch, var(--brand-violet-500) 30%, transparent) 0%,
       transparent 60%),
     radial-gradient(50% 40% at 100% 100%,
-      color-mix(in oklch, var(--brand-pink-400) 18%, transparent) 0%,
+      color-mix(in oklch, var(--brand-orange-500) 18%, transparent) 0%,
       transparent 60%),
     var(--brand-ink);
 }
@@ -407,22 +428,85 @@
     var(--card);
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* ---------------------------------------------------------------------- */
+/* Reference-site gradient system                                         */
+/*                                                                          */
+/* The reference design uses ~20 near-identical 3-stop diagonal gradients */
+/* (lavender -> orange -> violet, or white -> violet) differing only by   */
+/* angle — almost certainly one "mesh" treatment applied per-element with */
+/* a randomized angle, not 20 distinct designs. Rather than hardcoding    */
+/* every literal gradient as its own class (unmaintainable, ~20 classes  */
+/* that are 95% duplicate code), this collapses them into a small number */
+/* of *parametrized* primitives driven by CSS custom properties. Callers */
+/* override just the angle (or a stop) via inline style, e.g.:            */
+/*   <div className="brand-mesh" style={{ "--mesh-angle": "128deg" }} /> */
+/* ---------------------------------------------------------------------- */
 
-  .animate-hub-glow,
-  .animate-orbit-line,
-  .animate-bubble-float,
-  .animate-soft-rise {
-    animation: none !important;
-  }
+.brand-mesh {
+  --mesh-angle: 136deg;
+  --mesh-from: var(--brand-lavender-100);
+  --mesh-via: var(--brand-orange-600);
+  --mesh-via-pos: 55%;
+  --mesh-to: var(--brand-violet-500);
+  background: linear-gradient(var(--mesh-angle),
+      var(--mesh-from) 0%,
+      var(--mesh-via) var(--mesh-via-pos),
+      var(--mesh-to) 100%);
 }
+
+.brand-sheen {
+  --sheen-angle: 97deg;
+  --sheen-from: #ffffff;
+  --sheen-to: var(--brand-violet-500);
+  background: linear-gradient(var(--sheen-angle), var(--sheen-from) 0%, var(--sheen-to) 100%);
+}
+
+/* Vertical fill for small badges/icons/avatars (rgb(89,59,255)->lavender
+   and rgb(218,80,18)->lavender in the reference). Swap --badge-from. */
+.brand-badge-fill {
+  --badge-from: var(--brand-violet-500);
+  --badge-to: var(--brand-lavender-100);
+  background: linear-gradient(var(--badge-from) 0%, var(--badge-to) 100%);
+}
+
+/* Dramatic corner accent: orange -> violet -> black (403deg in reference).
+   Used behind hero art / large decorative panels. */
+.brand-aurora {
+  background: linear-gradient(403deg,
+      var(--brand-orange-600) 0%,
+      var(--brand-violet-500) 53.4%,
+      #000000 100%);
+}
+
+/* Violet -> white flare, e.g. spotlight behind a CTA. */
+.brand-flare {
+  background: linear-gradient(293deg, var(--brand-violet-500) 11%, #ffffff 84%);
+}
+
+/* Fades a surface out to the page ink — for section transitions. */
+.brand-fade-to-ink {
+  background: linear-gradient(rgba(5, 2, 24, 0) 0%, var(--brand-ink) 62%);
+}
+
+/* Fades a surface into solid lavender — used above light-on-dark bands. */
+.brand-fade-to-lavender {
+  background: linear-gradient(0deg,
+      rgba(222, 216, 255, 0) 20%,
+      var(--brand-lavender-100) 80.6%);
+}
+
+/* Faint glass highlight along the top edge of a dark card. */
+.brand-glass-sheen {
+  background: linear-gradient(rgba(221, 215, 255, 0.1) 0%, rgba(220, 214, 255, 0) 100%);
+}
+
 @keyframes spin-slow {
   to {
     transform: rotate(360deg);
   }
 }
 .animate-spin-slow {
-  animation: spin-slow 14s linear infinite;
+  animation: spin-slow 18s linear infinite;
 }
 
 @keyframes float-slow {
@@ -440,7 +524,7 @@
 }
 
 .animate-float-slow {
-  animation: float-slow 9s ease-in-out infinite;
+  animation: float-slow 15s ease-in-out infinite;
 }
 
 @keyframes float-slow-alt {
@@ -458,7 +542,7 @@
 }
 
 .animate-float-slow-alt {
-  animation: float-slow-alt 11s ease-in-out infinite;
+  animation: float-slow-alt 18s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
 
