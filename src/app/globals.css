@@ -171,7 +171,7 @@
 }
 
 .dark {
-  --background: #05050a;
+  --background: #030014;
   --foreground: #f5f5f7;
   --card: #101018;
   --card-foreground: #f5f5f7;
@@ -179,7 +179,7 @@
   --popover-foreground: #f5f5f7;
   --primary: #7c5cf0;
   --primary-foreground: #ffffff;
-  --secondary: #15151f;
+  --secondary: linear-gradient(rgb(89, 59, 255) 0%, rgb(222, 216, 255) 100%);
   --secondary-foreground: #d4d4e0;
   --muted: #15151f;
   --muted-foreground: #8b8b9e;
@@ -423,4 +423,52 @@
 }
 .animate-spin-slow {
   animation: spin-slow 14s linear infinite;
+}
+
+@keyframes float-slow {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: translate(-2%, -5%) scale(1.06);
+    opacity: 0.8;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 9s ease-in-out infinite;
+}
+
+@keyframes float-slow-alt {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translate(3%, 4%) scale(1.08);
+    opacity: 0.7;
+  }
+}
+
+.animate-float-slow-alt {
+  animation: float-slow-alt 11s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-hub-glow,
+  .animate-orbit-line,
+  .animate-bubble-float,
+  .animate-soft-rise,
+  .animate-spin-slow,
+  .animate-float-slow,
+  .animate-float-slow-alt {
+    animation: none !important;
+  }
 }
