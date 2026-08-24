@@ -500,13 +500,28 @@
   background: linear-gradient(rgba(221, 215, 255, 0.1) 0%, rgba(220, 214, 255, 0) 100%);
 }
 
+/* One-element gradient border (padding-box/border-box trick — no wrapper
+   div, no pseudo-element needed). Used for FAQ rows, eyebrow pills, and
+   any other violet->orange outlined chip. Override --ring-from/--ring-to
+   or --ring-angle per instance if a different pair/angle is needed. */
+.brand-ring-border {
+  --ring-angle: 135deg;
+  --ring-from: var(--brand-violet-500);
+  --ring-to: var(--brand-orange-600);
+  --ring-surface: var(--brand-surface-1);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--ring-surface), var(--ring-surface)) padding-box,
+    linear-gradient(var(--ring-angle), var(--ring-from), var(--ring-to)) border-box;
+}
+
 @keyframes spin-slow {
   to {
     transform: rotate(360deg);
   }
 }
 .animate-spin-slow {
-  animation: spin-slow 18s linear infinite;
+  animation: spin-slow 14s linear infinite;
 }
 
 @keyframes float-slow {
@@ -524,7 +539,7 @@
 }
 
 .animate-float-slow {
-  animation: float-slow 15s ease-in-out infinite;
+  animation: float-slow 9s ease-in-out infinite;
 }
 
 @keyframes float-slow-alt {
@@ -542,7 +557,7 @@
 }
 
 .animate-float-slow-alt {
-  animation: float-slow-alt 18s ease-in-out infinite;
+  animation: float-slow-alt 11s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
 

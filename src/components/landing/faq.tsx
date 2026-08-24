@@ -1,3 +1,4 @@
+import { PlusIcon } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -35,25 +36,38 @@ const FAQS = [
 
 export function Faq() {
   return (
-    <section className="border-t border-border/70 px-6 py-24">
-      <div className="mx-auto grid max-w-4xl gap-10 md:grid-cols-[minmax(0,220px)_1fr]">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Frequently asked questions
-          </h2>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Clear answers to common questions about flux, self-hosting, and
-            security.
-          </p>
-        </div>
+    <section
+      id="faq"
+      className="dark relative overflow-hidden py-24 text-white"
+    >
+      <div className="mx-auto max-w-2xl px-6 text-center">
+        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-white/80">
+          FAQ
+        </span>
 
-        <Accordion type="single" collapsible className="w-full">
+        <h2 className="mt-6 text-4xl font-medium tracking-tight sm:text-5xl">
+          Still have questions?
+        </h2>
+
+        <p className="mt-4 text-white/60">
+          Everything you need to know about automating workflows, integrating
+          tools, and getting started—quickly and confidently.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-12 max-w-3xl px-6">
+        <Accordion type="single" collapsible className="flex flex-col gap-4">
           {FAQS.map((faq, i) => (
-            <AccordionItem key={faq.question} value={`item-${i}`}>
-              <AccordionTrigger className="text-sm font-medium">
+            <AccordionItem
+              key={faq.question}
+              value={`item-${i}`}
+              className="brand-ring-border group rounded-2xl border-0 px-6 data-[state=open]:[--ring-from:var(--brand-orange-500)] data-[state=open]:[--ring-to:var(--brand-violet-500)]"
+            >
+              <AccordionTrigger className="py-5 text-base font-medium text-white hover:no-underline [&>svg]:hidden">
                 {faq.question}
+                <FaqToggle />
               </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
+              <AccordionContent className="pr-14 text-sm text-white/60">
                 {faq.answer}
               </AccordionContent>
             </AccordionItem>
@@ -61,5 +75,16 @@ export function Faq() {
         </Accordion>
       </div>
     </section>
+  );
+}
+
+function FaqToggle() {
+  return (
+    <span
+      aria-hidden="true"
+      className="brand-ring-border relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-data-[state=open]:rotate-45"
+    >
+      <PlusIcon className="size-4 text-[var(--brand-orange-500)]" strokeWidth={2.5} />
+    </span>
   );
 }
