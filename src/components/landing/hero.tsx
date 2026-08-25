@@ -5,7 +5,7 @@ import { GITHUB_URL } from "./constants";
 
 export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
-    <section className="brand-dark-band relative isolate overflow-hidden text-white">
+    <section className="dark relative isolate overflow-hidden text-white">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/graphics/dotted-ring.svg"

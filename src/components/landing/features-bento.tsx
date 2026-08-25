@@ -1,239 +1,169 @@
-import {
-  GitBranchIcon,
-  LockKeyholeIcon,
-  MailIcon,
-  MessageSquareIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  UsersIcon,
-  WorkflowIcon,
-  ZapIcon,
-} from "lucide-react";
+import { SparklesIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { ScrollFillCard } from "./scroll-card";
+
+type Row = {
+  title: string;
+  description: string;
+  image?: string;
+  imageAlt?: string;
+  rotateImage?: boolean;
+  imageOnRight: boolean;
+  content?: "scroll-fill-card";
+};
+
+const ROWS: Row[] = [
+  {
+    title: "Workflow Automation",
+    description:
+      "Automate repetitive multi-step processes — from a form submission to a fully routed, notified, and logged run — so your team can focus on higher-value work.",
+    image: "/images/hero/download (12).svg",
+    imageAlt: "Workflow automation node graph mockup",
+    imageOnRight: false,
+  },
+  {
+    title: "AI Chat & Assistant Nodes",
+    description:
+      "Drop in OpenAI, Anthropic, or Gemini nodes that read incoming messages, qualify leads, and escalate anything that needs a human — no separate chatbot platform required.",
+    image: "/images/hero/download (11).svg",
+    imageAlt: "AI assistant chat widget mockup",
+    imageOnRight: true,
+  },
+  {
+    title: "Multi-Channel Notifications",
+    description:
+      "Fan a single trigger out to email, Slack, Discord, and mobile push at once — each channel fires independently, so one slow integration never blocks the rest.",
+    image: "/images/hero/download (10).svg",
+    imageOnRight: false,
+    content: "scroll-fill-card",
+  },
+  {
+    title: "CRM & Team Routing",
+    description:
+      "Automatically capture, qualify, and route incoming leads or tickets to the right person on your team, based on rules you define once on the canvas.",
+    image: "/images/hero/download (13).svg",
+    imageAlt: "CRM automation routing mockup with rotating team avatars",
+    imageOnRight: true,
+    rotateImage: true,
+  },
+];
 
 export function FeaturesBento() {
   return (
-    <section id="features" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="features" className="relative mx-auto max-w-6xl px-6 py-24">
       <div className="mx-auto max-w-xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Precision-engineered to keep work moving
+        <span className="brand-ring-border mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/80">
+          <SparklesIcon className="size-3 text-[var(--brand-orange-500)]" />
+          AI-Driven Solutions
+        </span>
+        <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          Build automated AI workflows
         </h2>
         <p className="mt-3 text-muted-foreground">
-          Six capabilities, one canvas. Everything you need to automate
-          smarter and ship faster.
+          Connect your favorite apps, set simple triggers, and let flux run
+          tasks for you — no coding required.
         </p>
       </div>
 
-      <div
-        className="mt-12 grid gap-5 md:grid-cols-3"
-        style={{
-          gridTemplateAreas: `"a b b" "a c d" "e f f"`,
-        }}
-      >
-        <BentoCard area="a" className="md:row-span-2">
-          <MiniOrbitGraphic />
-          <CardCopy
-            title="No-code automation"
-            description="Drag triggers, models, and actions onto a canvas and wire them together. No YAML, no DSL to learn."
+      <div className="relative mt-16">
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 lg:block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero/download (23).svg"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-auto -translate-x-1/2 opacity-70"
           />
-        </BentoCard>
+          <span
+            aria-hidden="true"
+            className="animate-flow-down absolute left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_3px_var(--brand-violet-500)]"
+          />
+          {["12.5%", "37.5%", "62.5%", "87.5%"].map((top) => (
+            <span
+              key={top}
+              aria-hidden="true"
+              className="absolute left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--brand-violet-500)] bg-[var(--background)]"
+              style={{ top }}
+            />
+          ))}
+        </div>
 
-        <BentoCard area="b">
-          <MiniIntegrationsGraphic />
-          <CardCopy
-            title="Smart integrations"
-            description="Connect Stripe, Slack, OpenAI, Anthropic, and more in seconds — everything flows through one canvas."
-          />
-        </BentoCard>
+        <div className="flex flex-col gap-16 lg:gap-24">
+          {ROWS.map((row) => (
+            <div
+              key={row.title}
+              className={`flex flex-col items-center gap-8 lg:flex-row lg:gap-16 ${
+                row.imageOnRight ? "" : "lg:flex-row-reverse"
+              }`}
+            >
+              <div className="flex-1 text-center lg:text-left">
+                <h3 className="text-xl font-semibold sm:text-2xl">
+                  {row.title}
+                </h3>
+                <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground lg:mx-0">
+                  {row.description}
+                </p>
+              </div>
 
-        <BentoCard area="c">
-          <MiniChartGraphic />
-          <CardCopy
-            title="Every run, replayable"
-            description="Each execution is stored step by step, so you can inspect exactly what moved through which node."
-          />
-        </BentoCard>
-
-        <BentoCard area="d">
-          <MiniTeamGraphic />
-          <CardCopy
-            title="Type-safe end to end"
-            description="tRPC, Zod, and Prisma keep client, API, and database in sync — one schema change, zero drift."
-          />
-        </BentoCard>
-
-        <BentoCard area="e">
-          <MiniAiGraphic />
-          <CardCopy
-            title="AI models as nodes"
-            description="Drop in OpenAI, Anthropic, or Gemini nodes to summarize, classify, or generate mid-workflow."
-          />
-        </BentoCard>
-
-        <BentoCard area="f" className="md:flex md:items-center md:gap-8">
-          <MiniSecurityGraphic />
-          <CardCopy
-            title="Encrypted & dependency-aware"
-            description="Secrets are encrypted at rest and scoped per user. Workflows resolve as a directed graph, so nodes always run in the correct order."
-          />
-        </BentoCard>
+              <div className="flex flex-1 justify-center">
+                  <RowImage
+                    src={row.image as string}
+                    alt={row.imageAlt as string}
+                    rotate={row.rotateImage}
+                  />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-function BentoCard({
-  area,
-  className = "",
-  children,
+function RowImage({
+  src,
+  alt,
+  rotate,
 }: {
-  area: string;
-  className?: string;
+  src: string;
+  alt: string;
+  rotate?: boolean;
+}) {
+  if (!rotate) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img src={src} alt={alt} className="w-full max-w-md drop-shadow-2xl" />
+    );
+  }
+
+  return (
+    <div className="relative w-full max-w-md">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="animate-spin-slower w-full drop-shadow-2xl"
+      />
+      <TagChip className="left-2 top-4">Sales</TagChip>
+      <TagChip className="right-2 top-10">Support</TagChip>
+      <TagChip className="bottom-10 left-4">Success</TagChip>
+      <TagChip className="bottom-2 right-8">Ops</TagChip>
+    </div>
+  );
+}
+
+function TagChip({
+  children,
+  className = "",
+}: {
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div
-      style={{ gridArea: area }}
-      className={`brand-card-glow flex flex-col justify-between overflow-hidden rounded-2xl border border-border p-6 transition-colors hover:border-[var(--brand-violet-500)]/40 ${className}`}
+    <span
+      className={`absolute rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm ${className}`}
     >
       {children}
-    </div>
-  );
-}
-
-function CardCopy({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mt-6">
-      <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
-function IconChip({ icon: Icon }: { icon: typeof WorkflowIcon }) {
-  return (
-    <div className="flex size-8 items-center justify-center rounded-full border border-border bg-card shadow-sm">
-      <Icon className="size-3.5 text-[var(--brand-violet-500)]" />
-    </div>
-  );
-}
-
-function MiniOrbitGraphic() {
-  return (
-    <div className="relative flex h-32 items-center justify-center">
-      <div className="absolute left-4 top-2">
-        <IconChip icon={MailIcon} />
-      </div>
-      <div className="absolute right-6 top-6">
-        <IconChip icon={UsersIcon} />
-      </div>
-      <div className="absolute bottom-2 right-2">
-        <IconChip icon={GitBranchIcon} />
-      </div>
-      <div className="absolute bottom-4 left-8">
-        <IconChip icon={MessageSquareIcon} />
-      </div>
-      <div className="brand-logo-mark flex size-11 items-center justify-center rounded-xl shadow-sm">
-        <WorkflowIcon className="size-5 text-white" />
-      </div>
-    </div>
-  );
-}
-
-function MiniIntegrationsGraphic() {
-  return (
-    <div className="relative flex h-20 items-center justify-between rounded-xl border border-border bg-secondary/30 px-4">
-      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-        +10 tools
-      </span>
-      <svg viewBox="0 0 140 40" className="h-8 w-24" aria-hidden="true">
-        <polyline
-          points="0,32 25,18 50,26 75,8 100,16 140,2"
-          fill="none"
-          stroke="var(--brand-violet-500)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <div className="brand-logo-mark flex size-8 items-center justify-center rounded-lg">
-        <ZapIcon className="size-4 text-white" />
-      </div>
-    </div>
-  );
-}
-
-function MiniChartGraphic() {
-  return (
-    <div className="flex h-20 flex-col justify-end rounded-xl border border-border bg-secondary/30 p-3">
-      <span className="mb-1 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-        <span className="size-1 rounded-full bg-emerald-500" />
-        Live
-      </span>
-      <svg viewBox="0 0 100 24" className="h-8 w-full" aria-hidden="true">
-        <polyline
-          points="0,20 15,16 30,18 45,8 60,12 75,4 100,6"
-          fill="none"
-          stroke="var(--brand-violet-500)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-  );
-}
-
-function MiniTeamGraphic() {
-  return (
-    <div className="flex h-20 items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/30">
-      <IconChip icon={ShieldCheckIcon} />
-      <IconChip icon={GitBranchIcon} />
-      <div className="brand-logo-mark flex size-9 items-center justify-center rounded-full">
-        <UsersIcon className="size-4 text-white" />
-      </div>
-      <IconChip icon={WorkflowIcon} />
-    </div>
-  );
-}
-
-function MiniAiGraphic() {
-  return (
-    <div className="relative flex h-20 items-center justify-center rounded-xl border border-border bg-secondary/30">
-      <div className="absolute left-5">
-        <IconChip icon={MailIcon} />
-      </div>
-      <div className="brand-logo-mark flex size-9 items-center justify-center rounded-full">
-        <SparklesIcon className="size-4 text-white" />
-      </div>
-      <div className="absolute right-5">
-        <IconChip icon={UsersIcon} />
-      </div>
-    </div>
-  );
-}
-
-function MiniSecurityGraphic() {
-  return (
-    <div className="mb-5 flex shrink-0 items-center gap-3 md:mb-0">
-      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-        <GitBranchIcon className="size-5 text-[var(--brand-violet-500)]" />
-        <span className="text-[10px] font-medium text-muted-foreground">
-          Auto scaling
-        </span>
-      </div>
-      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-        <LockKeyholeIcon className="size-5 text-emerald-500" />
-        <span className="text-[10px] font-medium text-muted-foreground">
-          Encrypted vault
-        </span>
-      </div>
-    </div>
+    </span>
   );
 }

@@ -69,6 +69,14 @@
 }
 
 :root {
+  /* ------------------------------------------------------------------ */
+  /* Landing page brand palette — sourced directly from the reference   */
+  /* design's exported swatches (figma-colors.json / CSS Peeper scan):  */
+  /*   #030014 bg · #FC5F2A / #DA5012 orange · #593BFF violet           */
+  /*   #DED8FF / #DDD7FF lavender · #272536 / #292737 / #2A2A3B surfaces*/
+  /* Independent of the app's --primary token, so the marketing site    */
+  /* can use its own identity without touching in-app component colors. */
+  /* ------------------------------------------------------------------ */
   --brand-violet-50: #f5f3ff;
   --brand-violet-100: #e6e2ff;
   --brand-violet-300: #a493ff;
@@ -188,6 +196,10 @@
   --popover-foreground: #f5f5f7;
   --primary: #593bff;
   --primary-foreground: #ffffff;
+  /* NOTE: --secondary must stay a flat color, never a gradient — it's
+     consumed through Tailwind's bg-secondary/<alpha> utility, which needs
+     a single color to apply opacity to. Gradient looks live in the
+     dedicated --brand-gradient-* tokens further down instead. */
   --secondary: #272536;
   --secondary-foreground: #d4d4e0;
   --muted: #1b1a1f;
@@ -474,6 +486,10 @@
   background: linear-gradient(rgba(221, 215, 255, 0.1) 0%, rgba(220, 214, 255, 0) 100%);
 }
 
+/* One-element gradient border (padding-box/border-box trick — no wrapper
+   div, no pseudo-element needed). Used for FAQ rows, eyebrow pills, and
+   any other violet->orange outlined chip. Override --ring-from/--ring-to
+   or --ring-angle per instance if a different pair/angle is needed. */
 .brand-ring-border {
   --ring-angle: 135deg;
   --ring-from: var(--brand-violet-500);
@@ -544,6 +560,34 @@
 .animate-float-slow-alt {
   animation: float-slow-alt 11s ease-in-out infinite;
 }
+
+/* Small glowing dot that travels down the central connector line in the
+   features section, giving the impression of "energy" flowing through the
+   pipeline from one automation card to the next. */
+@keyframes flow-down {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.animate-flow-down {
+  animation: flow-down 4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .animate-hub-glow,
@@ -554,7 +598,8 @@
   .animate-spin-slower,
   .animate-spin-reverse-slower,
   .animate-float-slow,
-  .animate-float-slow-alt {
+  .animate-float-slow-alt,
+  .animate-flow-down {
     animation: none !important;
   }
 }

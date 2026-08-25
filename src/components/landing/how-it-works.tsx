@@ -35,7 +35,7 @@ export function HowItWorks() {
   return (
     <section
       id="solutions"
-      className="brand-dark-band relative overflow-hidden py-24 text-white"
+      className="dark relative overflow-hidden py-24 text-white"
     >
       <div className="mx-auto max-w-5xl px-6">
         <div className="text-center">
