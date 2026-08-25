@@ -17,6 +17,7 @@ const PLANS = [
     cta: "Get started",
     href: "/signup",
     featured: false,
+    badge: undefined,
     features: [
       "5 active workflows",
       "2,000 tasks / month",
@@ -51,6 +52,7 @@ const PLANS = [
     cta: "Contact us",
     href: GITHUB_URL,
     featured: false,
+    badge: undefined,
     features: [
       "Custom task limits",
       "Self-hosted deployment",
@@ -60,7 +62,6 @@ const PLANS = [
     ],
   },
 ] as const;
-
 export function Pricing() {
   const [billing, setBilling] = useState<Billing>("monthly");
 
