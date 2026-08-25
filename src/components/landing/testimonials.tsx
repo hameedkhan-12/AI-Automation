@@ -33,15 +33,15 @@ export function Testimonials() {
   return (
     <section className="dark relative overflow-hidden py-24 text-white">
       <div className="mx-auto max-w-lg px-6 text-center ">
-        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-white/80">
+        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide text-white/80">
           Testimonial
         </span>
         <h2 className="mt-6 text-4xl font-medium tracking-tight sm:text-5xl">
           Loved by Creative People
         </h2>
         <p className="mt-4 text-white/60">
-          These are sample quotes previewing the layout — swap in real
-          feedback once you have users.
+          These are sample quotes previewing the layout — swap in real feedback
+          once you have users.
         </p>
       </div>
 
@@ -63,6 +63,12 @@ function TestimonialCard({
 }: (typeof TESTIMONIALS)[number]) {
   return (
     <div className="brand-ring-border flex flex-col rounded-2xl p-6">
+      <img
+        src="/images/hero/download (56).svg"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 size-full object-cover"
+      />
       <div className="flex items-center gap-3">
         <span
           className="brand-mesh flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
@@ -82,9 +88,7 @@ function TestimonialCard({
 
       <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5">
         <LogoipsumMark />
-        <span className="text-sm font-semibold text-white/70">
-          Logoipsum
-        </span>
+        <span className="text-sm font-semibold text-white/70">Logoipsum</span>
       </div>
     </div>
   );

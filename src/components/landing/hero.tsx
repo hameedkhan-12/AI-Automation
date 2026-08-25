@@ -29,7 +29,7 @@ export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/graphics/hero-arc-right.svg"
+        src="/images/hero/arc_opposite_direction.svg"
         alt=""
         aria-hidden="true"
         className="pointer-events-none absolute right-3 top-1/2 hidden h-[86%] w-auto -translate-y-1/2 md:block lg:right-28"
@@ -69,7 +69,7 @@ export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
           Automate work with AI agents
         </div>
 
-        <h1 className="text-4xl font-medium tracking-tight text-balance sm:text-5xl md:text-7xl lg:text-8xl">
+        <h1 className="text-4xl font-medium tracking-tight text-balance sm:text-5xl md:text-7xl">
           Build Automated AI Workflows
         </h1>
 

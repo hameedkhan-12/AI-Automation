@@ -70,7 +70,7 @@ export function Pricing() {
       className="dark relative overflow-hidden py-24 text-white"
     >
       <div className="mx-auto max-w-lg px-6 text-center">
-        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-xs tracking-wide text-white">
+        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-sm tracking-wide text-white">
           Pricing
         </span>
         <h2 className="mt-6 text-4xl font-medium tracking-tight sm:text-5xl">

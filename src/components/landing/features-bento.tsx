@@ -52,11 +52,11 @@ export function FeaturesBento() {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-6 py-24">
       <div className="mx-auto max-w-xl text-center">
-        <span className="brand-ring-border mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/80">
+        <span className="brand-ring-border mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold uppercase tracking-wide text-white/80">
           <SparklesIcon className="size-3 text-[var(--brand-orange-500)]" />
           AI-Driven Solutions
         </span>
-        <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <h2 className="text-3xl font-medium tracking-tight text-balance sm:text-5xl">
           Build automated AI workflows
         </h2>
         <p className="mt-3 text-muted-foreground">

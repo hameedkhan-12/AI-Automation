@@ -41,7 +41,7 @@ export function Faq() {
       className="dark relative overflow-hidden py-24 text-white"
     >
       <div className="mx-auto max-w-2xl px-6 text-center">
-        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-white/80">
+        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium tracking-wide text-white/80">
           FAQ
         </span>
 
