@@ -1,28 +1,23 @@
-import { StarIcon } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { CSSProperties } from "react";
 
-const FEATURED = {
-  quote:
-    "We rebuilt our order-fulfillment pipeline in an afternoon. Setting up logic that used to take days now takes less than 15 minutes.",
-  name: "Sample Customer",
-  role: "Head of Ops, placeholder company",
-  initials: "SC",
-};
+type CSSVars = CSSProperties & Record<`--${string}`, string>;
 
-const OTHERS = [
+const TESTIMONIALS = [
   {
     quote:
-      "The credential vault alone sold us — every API key is encrypted and scoped, so onboarding a new teammate doesn't mean sharing secrets.",
+      "This platform completely changed how we manage workflows. What used to take hours now runs automatically in the background.",
     name: "Sample Customer",
-    role: "Engineering Lead, placeholder company",
-    initials: "EL",
+    role: "Head of Ops, placeholder company",
+    initials: "SC",
+    meshAngle: "128deg",
   },
   {
     quote:
-      "Being able to replay any run node-by-node made debugging our webhook flows trivial. It's the feature I didn't know I needed.",
+      "The credential vault alone sold us — every API key is encrypted and scoped, so onboarding a teammate doesn't mean sharing secrets.",
     name: "Sample Customer",
-    role: "Founder, placeholder company",
-    initials: "F",
+    role: "Engineering Lead, placeholder company",
+    initials: "EL",
+    meshAngle: "145deg",
   },
   {
     quote:
@@ -30,56 +25,30 @@ const OTHERS = [
     name: "Sample Customer",
     role: "Platform Lead, placeholder company",
     initials: "PL",
+    meshAngle: "97deg",
   },
-];
+] as const;
 
 export function Testimonials() {
   return (
-    <section className="border-t border-border/70 bg-secondary/30 px-6 py-24">
-      <div className="mx-auto max-w-6xl">
-        <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-          Placeholder quotes — swap in your own
+    <section className="dark relative overflow-hidden py-24 text-white">
+      <div className="mx-auto max-w-lg px-6 text-center ">
+        <span className="brand-ring-border inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-white/80">
+          Testimonial
+        </span>
+        <h2 className="mt-6 text-4xl font-medium tracking-tight sm:text-5xl">
+          Loved by Creative People
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
-          These are sample cards to preview the layout. Replace them with
-          real feedback once you have users.
+        <p className="mt-4 text-white/60">
+          These are sample quotes previewing the layout — swap in real
+          feedback once you have users.
         </p>
+      </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          <div className="brand-card-glow rounded-2xl border border-border p-7 lg:col-span-2">
-            <Stars />
-            <p className="mt-4 text-lg font-medium leading-relaxed text-balance">
-              &ldquo;{FEATURED.quote}&rdquo;
-            </p>
-            <div className="mt-6 flex items-center gap-3">
-              <Avatar className="size-10">
-                <AvatarFallback className="bg-[var(--brand-violet-100)] text-[var(--brand-violet-600)]">
-                  {FEATURED.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-semibold">{FEATURED.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {FEATURED.role}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-6">
-            {OTHERS.slice(0, 2).map((t) => (
-              <TestimonialCard key={t.name + t.role} {...t} />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          <TestimonialCard {...OTHERS[2]} />
-          <div className="brand-card-glow flex flex-col justify-center rounded-2xl border border-dashed border-border p-7 text-sm text-muted-foreground">
-            Your quote could go here. Star the repo and open a discussion if
-            you&apos;d like to be featured.
-          </div>
-        </div>
+      <div className="mx-auto mt-12 grid max-w-6xl gap-6 px-6 md:grid-cols-3">
+        {TESTIMONIALS.map((t) => (
+          <TestimonialCard key={t.name + t.role} {...t} />
+        ))}
       </div>
     </section>
   );
@@ -90,40 +59,53 @@ function TestimonialCard({
   name,
   role,
   initials,
-}: {
-  quote: string;
-  name: string;
-  role: string;
-  initials: string;
-}) {
+  meshAngle,
+}: (typeof TESTIMONIALS)[number]) {
   return (
-    <div className="brand-card-glow rounded-2xl border border-border p-6">
-      <Stars small />
-      <p className="mt-3 text-sm text-muted-foreground">&ldquo;{quote}&rdquo;</p>
-      <div className="mt-5 flex items-center gap-2.5">
-        <Avatar className="size-8">
-          <AvatarFallback className="bg-[var(--brand-violet-100)] text-xs text-[var(--brand-violet-600)]">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+    <div className="brand-ring-border flex flex-col rounded-2xl p-6">
+      <div className="flex items-center gap-3">
+        <span
+          className="brand-mesh flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
+          style={{ "--mesh-angle": meshAngle } as CSSVars}
+        >
+          {initials}
+        </span>
         <div>
-          <p className="text-xs font-semibold">{name}</p>
-          <p className="text-[11px] text-muted-foreground">{role}</p>
+          <p className="text-sm font-semibold text-white">{name}</p>
+          <p className="text-xs text-white/50">{role}</p>
         </div>
+      </div>
+
+      <p className="mt-8 flex-1 text-[15px] font-medium leading-relaxed text-balance text-white/90">
+        &ldquo;{quote}&rdquo;
+      </p>
+
+      <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5">
+        <LogoipsumMark />
+        <span className="text-sm font-semibold text-white/70">
+          Logoipsum
+        </span>
       </div>
     </div>
   );
 }
 
-function Stars({ small = false }: { small?: boolean }) {
+function LogoipsumMark() {
   return (
-    <div className="flex items-center gap-0.5 text-[var(--brand-orange-500)]">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <StarIcon
-          key={i}
-          className={small ? "size-3 fill-current" : "size-4 fill-current"}
-        />
-      ))}
-    </div>
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 8c4-3 8 3 12 0M4 12c4-3 8 3 12 0M4 16c4-3 8 3 12 0"
+        stroke="white"
+        strokeOpacity="0.7"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

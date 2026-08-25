@@ -447,8 +447,6 @@
   background: linear-gradient(var(--sheen-angle), var(--sheen-from) 0%, var(--sheen-to) 100%);
 }
 
-/* Vertical fill for small badges/icons/avatars (rgb(89,59,255)->lavender
-   and rgb(218,80,18)->lavender in the reference). Swap --badge-from. */
 .brand-badge-fill {
   --badge-from: var(--brand-violet-500);
   --badge-to: var(--brand-lavender-100);
