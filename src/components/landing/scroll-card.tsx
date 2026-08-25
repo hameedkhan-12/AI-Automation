@@ -1,13 +1,11 @@
 "use client";
 
-import { BellIcon, MailIcon, SettingsIcon } from "lucide-react";
-import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
-const ROWS = [
-  { label: "Automation Start", icon: SettingsIcon, fill: "100%" },
-  { label: "Outbound Email", icon: MailIcon, fill: "100%" },
-  { label: "Mobile Notification", icon: BellIcon, fill: "100%" },
+const BARS = [
+  { top: "20%", fill: "100%" },
+  { top: "48%", fill: "100%" },
+  { top: "74%", fill: "100%" },
 ];
 
 export function ScrollFillCard() {
@@ -33,37 +31,29 @@ export function ScrollFillCard() {
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="brand-mesh relative w-full max-w-md overflow-hidden rounded-2xl p-5 shadow-2xl"
-      style={{ "--mesh-via-pos": "60%" } as CSSProperties}
-    >
-      <div className="flex flex-col gap-3">
-        {ROWS.map((row, i) => (
+    <div ref={ref} className="relative w-full max-w-md">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/hero/download (10).svg"
+        alt="Marketing automation mockup: automation start, outbound email, and mobile notification steps"
+        className="w-full drop-shadow-2xl"
+      />
+
+      {BARS.map((bar, i) => (
+        <div
+          key={bar.top}
+          className="absolute left-[29%] h-[4%] w-[60%] overflow-hidden mt-3"
+          style={{ top: bar.top }}
+        >
           <div
-            key={row.label}
-            className="flex items-center gap-3 rounded-xl bg-black/25 px-3.5 py-3 backdrop-blur-sm"
-          >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15">
-              <row.icon className="size-4 text-white" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="mb-1.5 truncate text-xs font-semibold text-white">
-                {row.label}
-              </p>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
-                <div
-                  className="h-full rounded-full bg-white transition-[width] duration-1400 ease-out"
-                  style={{
-                    width: inView ? row.fill : "0%",
-                    transitionDelay: `${i * 180}ms`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            className="h-full bg-gradient-to-r from-white/90 to-[var(--brand-violet-500)] transition-[width] duration-[1400ms] ease-out"
+            style={{
+              width: inView ? bar.fill : "0%",
+              transitionDelay: `${i * 200}ms`,
+            }}
+          />
+        </div>
+      ))}
     </div>
   );
 }

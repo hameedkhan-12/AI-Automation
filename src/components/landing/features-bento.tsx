@@ -1,5 +1,5 @@
 import { SparklesIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { ConnectorSpine } from "./connector-spine";
 import { ScrollFillCard } from "./scroll-card";
 
 type Row = {
@@ -7,9 +7,8 @@ type Row = {
   description: string;
   image?: string;
   imageAlt?: string;
-  rotateImage?: boolean;
   imageOnRight: boolean;
-  content?: "scroll-fill-card";
+  content?: "scroll-fill-card" | "orbit-card";
 };
 
 const ROWS: Row[] = [
@@ -30,21 +29,45 @@ const ROWS: Row[] = [
     imageOnRight: true,
   },
   {
-    title: "Multi-Channel Notifications",
+    title: "Personalized AI Marketing",
     description:
-      "Fan a single trigger out to email, Slack, Discord, and mobile push at once — each channel fires independently, so one slow integration never blocks the rest.",
-    image: "/images/hero/download (10).svg",
+      "Engage customers with tailored messages delivered at the right time — one trigger fans out to email, mobile push, and more, each tracked independently.",
     imageOnRight: false,
     content: "scroll-fill-card",
   },
   {
-    title: "CRM & Team Routing",
+    title: "CRM Automation",
     description:
-      "Automatically capture, qualify, and route incoming leads or tickets to the right person on your team, based on rules you define once on the canvas.",
-    image: "/images/hero/download (13).svg",
-    imageAlt: "CRM automation routing mockup with rotating team avatars",
+      "Automatically capture, qualify, and route leads to the right person on your team, based on rules you define once on the canvas.",
     imageOnRight: true,
-    rotateImage: true,
+    content: "orbit-card",
+  },
+];
+
+const ORBIT_PHOTOS = [
+  {
+    src: "/images/person (3).png",
+    alt: "Team member",
+    top: "73%",
+    left: "55%",
+  },
+  {
+    src: "/images/person1.png",
+    alt: "Team member",
+    top: "33%",
+    left: "43%",
+  },
+  {
+    src: "/images/person (1).png",
+    alt: "Team member",
+    top: "40%",
+    left: "71%",
+  },
+  {
+    src: "/images/person (2).png",
+    alt: "Team member",
+    top: "63%",
+    left: "29%",
   },
 ];
 
@@ -52,11 +75,11 @@ export function FeaturesBento() {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-6 py-24">
       <div className="mx-auto max-w-xl text-center">
-        <span className="brand-ring-border mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold uppercase tracking-wide text-white/80">
+        <span className="brand-ring-border mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/80">
           <SparklesIcon className="size-3 text-[var(--brand-orange-500)]" />
           AI-Driven Solutions
         </span>
-        <h2 className="text-3xl font-medium tracking-tight text-balance sm:text-5xl">
+        <h2 className="text-3xl font-medium tracking-tight text-balance sm:text-4xl">
           Build automated AI workflows
         </h2>
         <p className="mt-3 text-muted-foreground">
@@ -66,27 +89,7 @@ export function FeaturesBento() {
       </div>
 
       <div className="relative mt-16">
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 lg:block">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/hero/download (23).svg"
-            alt=""
-            aria-hidden="true"
-            className="h-full w-auto -translate-x-1/2 opacity-70"
-          />
-          <span
-            aria-hidden="true"
-            className="animate-flow-down absolute left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_3px_var(--brand-violet-500)]"
-          />
-          {["12.5%", "37.5%", "62.5%", "87.5%"].map((top) => (
-            <span
-              key={top}
-              aria-hidden="true"
-              className="absolute left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--brand-violet-500)] bg-[var(--background)]"
-              style={{ top }}
-            />
-          ))}
-        </div>
+        <ConnectorSpine />
 
         <div className="flex flex-col gap-16 lg:gap-24">
           {ROWS.map((row) => (
@@ -106,11 +109,16 @@ export function FeaturesBento() {
               </div>
 
               <div className="flex flex-1 justify-center">
-                  <RowImage
-                    src={row.image as string}
-                    alt={row.imageAlt as string}
-                    rotate={row.rotateImage}
+                {row.content === "scroll-fill-card" && <ScrollFillCard />}
+                {row.content === "orbit-card" && <OrbitCard />}
+                {!row.content && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={row.image}
+                    alt={row.imageAlt}
+                    className="w-full max-w-md drop-shadow-2xl"
                   />
+                )}
               </div>
             </div>
           ))}
@@ -120,50 +128,33 @@ export function FeaturesBento() {
   );
 }
 
-function RowImage({
-  src,
-  alt,
-  rotate,
-}: {
-  src: string;
-  alt: string;
-  rotate?: boolean;
-}) {
-  if (!rotate) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img src={src} alt={alt} className="w-full max-w-md drop-shadow-2xl" />
-    );
-  }
-
+function OrbitCard() {
   return (
     <div className="relative w-full max-w-md">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
-        alt={alt}
-        className="animate-spin-slower w-full drop-shadow-2xl"
+        src="/images/hero/download (13).svg"
+        alt="CRM automation mockup: contacts orbiting a routing hub"
+        className="w-full drop-shadow-2xl"
       />
-      <TagChip className="left-2 top-4">Sales</TagChip>
-      <TagChip className="right-2 top-10">Support</TagChip>
-      <TagChip className="bottom-10 left-4">Success</TagChip>
-      <TagChip className="bottom-2 right-8">Ops</TagChip>
+      <div className="animate-orbit-spin absolute inset-0">
+        {ORBIT_PHOTOS.map((photo) => (
+          <div
+            key={photo.src}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            style={{ top: photo.top, left: photo.left }}
+          >
+            <div className="animate-orbit-spin-reverse">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.src}
+                alt={photo.alt}
+                className="size-12 rounded-full border-2 border-white/20 object-cover shadow-md"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-  );
-}
-
-function TagChip({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`absolute rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm ${className}`}
-    >
-      {children}
-    </span>
   );
 }

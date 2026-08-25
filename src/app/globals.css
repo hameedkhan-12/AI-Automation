@@ -196,10 +196,7 @@
   --popover-foreground: #f5f5f7;
   --primary: #593bff;
   --primary-foreground: #ffffff;
-  /* NOTE: --secondary must stay a flat color, never a gradient — it's
-     consumed through Tailwind's bg-secondary/<alpha> utility, which needs
-     a single color to apply opacity to. Gradient looks live in the
-     dedicated --brand-gradient-* tokens further down instead. */
+
   --secondary: #272536;
   --secondary-foreground: #d4d4e0;
   --muted: #1b1a1f;
@@ -330,9 +327,6 @@
   }
 }
 
-/* ---------------------------------------------------------------------- */
-/* Marketing site: hero orbit, bento cards, glow band                     */
-/* ---------------------------------------------------------------------- */
 
 @keyframes hub-glow {
 
@@ -484,10 +478,6 @@
   background: linear-gradient(rgba(221, 215, 255, 0.1) 0%, rgba(220, 214, 255, 0) 100%);
 }
 
-/* One-element gradient border (padding-box/border-box trick — no wrapper
-   div, no pseudo-element needed). Used for FAQ rows, eyebrow pills, and
-   any other violet->orange outlined chip. Override --ring-from/--ring-to
-   or --ring-angle per instance if a different pair/angle is needed. */
 .brand-ring-border {
   --ring-angle: 135deg;
   --ring-from: var(--brand-violet-500);
@@ -559,9 +549,6 @@
   animation: float-slow-alt 11s ease-in-out infinite;
 }
 
-/* Small glowing dot that travels down the central connector line in the
-   features section, giving the impression of "energy" flowing through the
-   pipeline from one automation card to the next. */
 @keyframes flow-down {
   0% {
     top: 0%;
@@ -600,4 +587,32 @@
   .animate-flow-down {
     animation: none !important;
   }
+}
+
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-orbit-spin {
+  animation: orbit-spin 28s linear infinite;
+}
+
+.animate-orbit-spin-reverse {
+  animation: orbit-spin-reverse 28s linear infinite;
+}
+
+.brand-orbit-core {
+  background: linear-gradient(135deg, var(--brand-orange-500) 0%, var(--brand-violet-500) 100%);
 }
