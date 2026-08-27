@@ -9,7 +9,7 @@ on:
       - '.github/workflows/deploy-market-listener.yml'
 
 env:
-  AWS_REGION: eu-north-1b
+  AWS_REGION: eu-north-1
   ECR_REPOSITORY: flux-market-listener
   EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
 
