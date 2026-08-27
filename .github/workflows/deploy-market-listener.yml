@@ -45,7 +45,7 @@ jobs:
       - name: Deploy on EC2 via AWS SSM Run Command
         run: |
           aws ssm send-command \
-            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
+            --instance-ids "i-0ed628205f7734146" \
             --document-name "AWS-RunShellScript" \
             --parameters commands='[
               "aws ecr get-login-password --region '${{ env.AWS_REGION }}' | docker login --username AWS --password-stdin '${{ steps.login-ecr.outputs.registry }}'",
