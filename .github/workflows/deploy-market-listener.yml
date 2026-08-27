@@ -1,0 +1,58 @@
+name: Deploy Market Listener to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/market-listener/**'
+      - '.github/workflows/deploy-market-listener.yml'
+
+env:
+  AWS_REGION: eu-north-1b
+  ECR_REPOSITORY: flux-market-listener
+  EC2_INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+
+jobs:
+  build-and-deploy:
+    name: Build, Push to ECR, and Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f services/market-listener/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy on EC2 via AWS SSM Run Command
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='[
+              "aws ecr get-login-password --region '${{ env.AWS_REGION }}' | docker login --username AWS --password-stdin '${{ steps.login-ecr.outputs.registry }}'",
+              "docker pull '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest'",
+              "docker stop market-listener || true",
+              "docker rm market-listener || true",
+              "docker run -d --name market-listener --restart always -p 3001:3001 --env-file /home/ubuntu/.env.listener '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest'",
+              "docker image prune -af"
+            ]' \
+            --comment "Deploy market listener"
