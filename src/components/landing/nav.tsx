@@ -24,7 +24,7 @@ export function Nav({ isAuthenticated }: { isAuthenticated: boolean }) {
     >
       <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-6">
         <Link href="#top" className="flex items-center gap-2.5">
-          <span className="brand-logo-mark flex size-7 items-center justify-center rounded-lg shadow-sm">
+          <span className="brand-mesh flex size-7 items-center justify-center rounded-lg shadow-sm">
             <WorkflowIcon className="size-4 text-white" strokeWidth={2.5} />
           </span>
           <span className="text-[22px] font-medium tracking-tight">FLUX</span>

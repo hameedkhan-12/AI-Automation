@@ -19,7 +19,7 @@ const QUICK_LINKS_COL2 = [
 const SOCIALS = [
   { label: "GitHub", href: GITHUB_URL, icon: GithubIcon },
   { label: "Discord", href: "#", icon: null, src: "/logos/discord.svg" },
-  { label: "X (Twitter)", href: "#", icon: TwitterIcon },
+  { label: "X (Twitter)", href: "https://x.com/hameedkhan_11", icon: TwitterIcon },
 ];
 
 export function Footer() {
@@ -49,7 +49,7 @@ export function Footer() {
                 href="#top"
                 className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-90"
               >
-                <span className="brand-logo-mark flex size-8 items-center justify-center rounded-lg shadow-sm">
+                <span className="brand-mesh flex size-8 items-center justify-center rounded-lg shadow-sm">
                   <WorkflowIcon
                     className="size-4 text-white"
                     strokeWidth={2.5}
@@ -171,6 +171,7 @@ export function Footer() {
           className="animate-spin-slow h-auto w-[320px] max-w-none translate-y-1/3 opacity-95 sm:w-[440px] md:w-[540px] lg:w-[620px]"
         />
       </div>
+
     </footer>
   );
 }

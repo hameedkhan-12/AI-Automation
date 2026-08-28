@@ -11,14 +11,14 @@ export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
         src="/graphics/dotted-ring.svg"
         alt=""
         aria-hidden="true"
-        className="animate-spin-slow pointer-events-none absolute left-[-18%] top-1/2 hidden aspect-square w-[80%] max-w-[820px] -translate-y-1/2 opacity-70 md:block"
+        className="animate-spin-slow pointer-events-none absolute left-[-18%] top-1/2 hidden aspect-square w-[80%] max-w-[820px] -translate-y-1/2  md:block"
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/graphics/dotted-ring.svg"
         alt=""
         aria-hidden="true"
-        className="animate-spin-slow pointer-events-none absolute right-[-18%] top-1/2 hidden aspect-square w-[80%] max-w-[820px] -translate-y-1/2 opacity-70 md:block"
+        className="animate-spin-slow pointer-events-none absolute right-[-18%] top-1/2 hidden aspect-square w-[80%] max-w-[820px] -translate-y-1/2  md:block"
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -40,20 +40,20 @@ export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
         src="/images/hero/download (14).svg"
         alt=""
         aria-hidden="true"
-        className="animate-float-slow pointer-events-none absolute top-12  -z-10 w-[560px] max-w-none opacity-70 blur-2xl sm:w-[680px]"
+        className="animate-float-slow pointer-events-none absolute top-12  -z-10 w-[560px] max-w-none  blur-xs sm:w-[680px] opacity-80"
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/hero/download (14).svg"
         alt=""
         aria-hidden="true"
-        className="animate-float-slow-alt pointer-events-none absolute top-8 -right-10 -z-10 w-[520px] max-w-none rotate-180 opacity-60 blur-2xl sm:w-[640px]"
+        className="animate-float-slow-alt pointer-events-none absolute top-8 -right-10 -z-10 w-[520px] max-w-none rotate-180 blur-xs sm:w-[640px] opacity-80"
       />
       <img
         src="/images/hero/download (14).svg"
         alt=""
         aria-hidden="true"
-        className="animate-float-slow-alt pointer-events-none top-80 right-97 absolute -z-10 w-[520px] max-w-none rotate-180 opacity-60 blur-2xl sm:w-[640px]"
+        className="animate-float-slow-alt pointer-events-none top-80 right-97 absolute -z-10 w-[520px] max-w-none rotate-180 blur-xs sm:w-[640px] opacity-80"
       />
 
       {/* Center hotspot — brightens the middle of the band the way the
@@ -73,7 +73,7 @@ export function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
           Build Automated AI Workflows
         </h1>
 
-        <p className="mt-5 max-w-lg text-base text-white/60 sm:text-lg">
+        <p className="mt-5 max-w-lg text-base text-white/70 sm:text-lg">
           flux connects payments, forms, language models, and chat into
           reliable automations you assemble on a canvas — not a config file.
         </p>

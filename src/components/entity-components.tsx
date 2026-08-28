@@ -31,10 +31,10 @@ type EntityHeaderProps = {
   disabled?: boolean;
   isCreating?: boolean;
 } & (
-  | { onNew: () => void; newButtonHref?: never }
-  | { newButtonHref: string; onNew?: never }
-  | { onNew?: never; newButtonHref?: never }
-);
+    | { onNew: () => void; newButtonHref?: never }
+    | { newButtonHref: string; onNew?: never }
+    | { onNew?: never; newButtonHref?: never }
+  );
 
 export const EntityHeader = ({
   title,
@@ -56,9 +56,9 @@ export const EntityHeader = ({
         )}
       </div>
       {onNew && !newButtonHref && (
-        <Button 
-          disabled={isCreating || disabled} 
-          size="sm" 
+        <Button
+          disabled={isCreating || disabled}
+          size="sm"
           onClick={onNew}
         >
           <PlusIcon className="size-4" />
@@ -66,8 +66,8 @@ export const EntityHeader = ({
         </Button>
       )}
       {newButtonHref && !onNew && (
-        <Button 
-          size="sm" 
+        <Button
+          size="sm"
           asChild
         >
           <Link href={newButtonHref} prefetch>
@@ -121,7 +121,7 @@ export const EntitySearch = ({
   return (
     <div className="relative ml-auto">
       <SearchIcon className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-      <Input 
+      <Input
         className="max-w-[200px] bg-background shadow-none border-border pl-8"
         placeholder={placeholder}
         value={value}
@@ -215,7 +215,7 @@ export const EmptyView = ({
   onNew
 }: EmptyViewProps) => {
   return (
-    <Empty className="border border-dashed bg-white">
+    <Empty className="border border-dashed">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <PackageOpenIcon />
@@ -343,7 +343,7 @@ export const EntityItem = ({
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={(e) => e.stopPropagation()} 
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <MoreVerticalIcon className="size-4" />
                     </Button>
