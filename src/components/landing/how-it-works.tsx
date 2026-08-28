@@ -43,7 +43,7 @@ export function HowItWorks() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col items-center lg:items-stretch gap-8">
             {STEPS.map((step) => (
               <StepCard key={step.number} step={step} />
             ))}
@@ -56,7 +56,7 @@ export function HowItWorks() {
 
 function StepCard({ step }: { step: (typeof STEPS)[number] }) {
   return (
-    <div className="brand-ring-border w-[470px] h-[300px] relative overflow-hidden rounded-2xl  p-8 py-8">
+    <div className="brand-ring-border w-full max-w-[470px] min-h-[260px] relative overflow-hidden rounded-2xl p-6 sm:p-8">
       <div className="flex items-start justify-between">
         <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}

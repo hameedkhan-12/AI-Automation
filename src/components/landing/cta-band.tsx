@@ -69,8 +69,8 @@ export function CtaBand({ isAuthenticated }: { isAuthenticated: boolean }) {
         className="animate-float-slow-alt pointer-events-none top-60 right-0  absolute -z-10 w-[520px] h-[500px] max-w-none rotate-180 opacity-40 blur-2xl sm:w-[1000px]"
       />
 
-      <div className="relative mx-auto flex max-w-2xl flex-col items-center px-6 pb-24 pt-32 text-center sm:pt-40">
-        <h2 className="text-4xl font-medium text-balance sm:text-7xl pt-24">
+      <div className="relative mx-auto flex max-w-2xl flex-col items-center px-6 pb-24 pt-24 text-center sm:pt-40">
+        <h2 className="text-4xl font-medium text-balance sm:text-5xl md:text-7xl pt-8 sm:pt-16">
           Start Automating in Minutes.
         </h2>
 

@@ -3,15 +3,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { GITHUB_URL } from "./constants";
 
-const QUICK_LINKS_A = [
+const QUICK_LINKS_COL1 = [
   { label: "Home", href: "#top" },
   { label: "Solutions", href: "#solutions" },
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
 ];
 
-const QUICK_LINKS_B = [
-  { label: "GitHub Issues", href: `${GITHUB_URL}/issues`, external: true },
+const QUICK_LINKS_COL2 = [
+  { label: "Contact Us", href: GITHUB_URL, external: true },
   { label: "Terms & Conditions", href: "#" },
   { label: "Privacy Policy", href: "#" },
 ];
@@ -24,70 +24,72 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="dark relative overflow-hidden text-white">
+    <footer className="dark relative overflow-hidden bg-[var(--brand-ink)] text-white">
+      {/* Top subtle border */}
       <div className="absolute inset-x-0 top-0 border-t border-white/10" />
 
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="relative mx-auto h-full px-6 mt-44 ml-28">
-          {/* eslint-disable-next-line @next/next/no-img-element -- decorative
-              bleed image of unknown intrinsic size; plain img preserves its
-              natural aspect ratio instead of forcing one. */}
-          <img
-            src="/images/footer.png"
-            alt=""
-            aria-hidden="true"
-            className="animate-spin-slow absolute -bottom-10 left-[45%] w-[280px] -translate-x-1/2 opacity-90 sm:w-[380px] lg:left-[42%] lg:w-[480px]"
-          />
-        </div>
-      </div>
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-20 top-0 -z-10 size-[500px] rounded-full bg-[radial-gradient(circle,rgba(89,59,255,0.12)_0%,transparent_70%)] blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-20 top-0 -z-10 size-[500px] rounded-full bg-[radial-gradient(circle,rgba(252,95,42,0.08)_0%,transparent_70%)] blur-3xl"
+      />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 pb-40 pt-16 sm:pb-52">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
-          <div>
-            <Link
-              href="#top"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2"
-            >
-              <span className="brand-logo-mark flex size-6 items-center justify-center rounded-md">
-                <WorkflowIcon
-                  className="size-3.5 text-white"
-                  strokeWidth={2.5}
-                />
-              </span>
-              <span className="text-lg font-medium tracking-tight">FLUX</span>
-            </Link>
-            <p className="mt-6 text-sm text-white">
-              &copy; {new Date().getFullYear()}{" "}
-              <span className="font-medium text-white/70">flux</span>. All
-              rights reserved.
+      {/* Main Grid Content */}
+      <div className="relative z-10 mx-auto max-w-7xl px-6 pt-16 pb-48 sm:pb-64 lg:px-8">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+
+          {/* Brand & Copyright Column */}
+          <div className="flex flex-col justify-between sm:col-span-2 lg:col-span-4">
+            <div>
+              <Link
+                href="#top"
+                className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-90"
+              >
+                <span className="brand-logo-mark flex size-8 items-center justify-center rounded-lg shadow-sm">
+                  <WorkflowIcon
+                    className="size-4 text-white"
+                    strokeWidth={2.5}
+                  />
+                </span>
+                <span className="text-2xl font-bold tracking-tight">FLUX</span>
+              </Link>
+            </div>
+
+            <p className="mt-8 text-xs text-white/50 sm:mt-16">
+              &copy; {new Date().getFullYear()} Design by <span className="font-semibold text-white/80">Flux</span>. All rights reserved.
             </p>
           </div>
 
-          <div>
-            <p className="text-base font-medium sm:text-lg">
-              Quick <span className="brand-gradient-text">link:</span>
+          {/* Quick link: Column (2 sub-columns) */}
+          <div className="lg:col-span-4">
+            <p className="text-sm font-semibold text-white">
+              Quick <span className="text-[var(--brand-violet-300)]">link:</span>
             </p>
             <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3">
-              <ul className="flex flex-col gap-3">
-                {QUICK_LINKS_A.map((link) => (
+              <ul className="flex flex-col gap-3.5">
+                {QUICK_LINKS_COL1.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-base text-white/90 transition-colors hover:text-white"
+                      className="text-sm text-white/70 transition-colors hover:text-white"
                     >
                       {link.label}
                     </a>
                   </li>
                 ))}
               </ul>
-              <ul className="flex flex-col gap-3">
-                {QUICK_LINKS_B.map((link) => (
+              <ul className="flex flex-col gap-3.5">
+                {QUICK_LINKS_COL2.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
                       target={link.external ? "_blank" : undefined}
                       rel={link.external ? "noreferrer" : undefined}
-                      className="text-base text-white/90 transition-colors hover:text-white"
+                      className="text-sm text-white/70 transition-colors hover:text-white"
                     >
                       {link.label}
                     </a>
@@ -97,27 +99,28 @@ export function Footer() {
             </div>
           </div>
 
-          <div>
-            <p className="text-base font-medium sm:text-lg">
-              Quick <span className="brand-gradient-text">contact:</span>
+          {/* Quick Contact: Column */}
+          <div className="lg:col-span-2">
+            <p className="text-sm font-semibold text-white">
+              Quick <span className="text-[var(--brand-violet-300)]">Contact:</span>
             </p>
-            <div className="mt-5 flex flex-col gap-5">
+            <div className="mt-5 flex flex-col gap-4">
               <div>
-                <p className="text-sm font-medium text-white/80">Community:</p>
+                <p className="text-xs font-semibold text-white">Community:</p>
                 <a
                   href={GITHUB_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-base text-white/90 transition-colors hover:text-white"
+                  className="mt-1 block text-sm text-white/70 transition-colors hover:text-white"
                 >
-                  Open an issue on GitHub
+                  GitHub Issues
                 </a>
               </div>
               <div>
-                <p className="text-sm font-medium text-white">Mail us:</p>
+                <p className="text-xs font-semibold text-white">Mail Us:</p>
                 <a
                   href="mailto:hello@flux.dev"
-                  className="text-base text-white/90 transition-colors hover:text-white"
+                  className="mt-1 block text-sm text-white/70 transition-colors hover:text-white"
                 >
                   hello@flux.dev
                 </a>
@@ -125,9 +128,10 @@ export function Footer() {
             </div>
           </div>
 
-          <div>
-            <p className="text-base font-medium sm:text-lg">
-              Follow <span className="brand-gradient-text">us:</span>
+          {/* Follow us: Column */}
+          <div className="lg:col-span-2">
+            <p className="text-sm font-semibold text-white">
+              Follow <span className="text-[var(--brand-violet-300)]">us:</span>
             </p>
             <div className="mt-5 flex items-center gap-3">
               {SOCIALS.map((social) => (
@@ -137,24 +141,35 @@ export function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={social.label}
-                  className="flex size-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 transition-colors hover:border-[var(--brand-violet-500)]/60"
+                  className="group flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm transition-all duration-200 hover:border-[var(--brand-violet-500)]/80 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(89,59,255,0.3)]"
                 >
                   {social.icon ? (
-                    <social.icon className="size-4 text-white" />
+                    <social.icon className="size-4 text-white/80 transition-colors group-hover:text-white" />
                   ) : (
                     <Image
                       src={social.src as string}
                       alt=""
                       width={16}
                       height={16}
+                      className="opacity-80 transition-opacity group-hover:opacity-100"
                     />
                   )}
                 </a>
               ))}
             </div>
           </div>
-          
+
         </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 flex justify-center overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/footer.png"
+          alt=""
+          aria-hidden="true"
+          className="animate-spin-slow h-auto w-[320px] max-w-none translate-y-1/3 opacity-95 sm:w-[440px] md:w-[540px] lg:w-[620px]"
+        />
       </div>
     </footer>
   );

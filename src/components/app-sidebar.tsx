@@ -7,6 +7,7 @@ import {
   KeyIcon,
   LogOutIcon,
   StarIcon,
+  TrendingUpIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,6 +34,11 @@ const menuItems = [
         title: "Workflows",
         icon: FolderOpenIcon,
         url: "/workflows",
+      },
+      {
+        title: "Trading",
+        icon: TrendingUpIcon,
+        url: "/trading",
       },
       {
         title: "Credentials",

@@ -19,7 +19,7 @@ export default async function Home() {
   const isAuthenticated = !!session;
 
   return (
-    <div className="dark bg-background  min-h-screen text-foreground">
+    <div className="dark bg-background min-h-screen overflow-x-hidden text-foreground">
       <Nav isAuthenticated={isAuthenticated} />
       <Hero isAuthenticated={isAuthenticated} />
       <FeatureStrip />
