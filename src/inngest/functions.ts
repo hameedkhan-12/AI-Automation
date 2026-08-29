@@ -205,7 +205,7 @@ export const executeWorkflow = inngest.createFunction(
     await step.run("update-execution", async () => {
       if (skippedReason) {
         return prisma.execution.update({
-          where: { inngestEventId, workflowId },
+          where: { inngestEventId },
           data: {
             status: ExecutionStatus.SKIPPED,
             completedAt: new Date(),
@@ -215,7 +215,7 @@ export const executeWorkflow = inngest.createFunction(
         });
       }
       return prisma.execution.update({
-        where: { inngestEventId, workflowId },
+        where: { inngestEventId },
         data: {
           status: ExecutionStatus.SUCCESS,
           completedAt: new Date(),
