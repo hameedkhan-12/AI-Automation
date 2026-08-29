@@ -1,6 +1,7 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
 import { prisma } from "@/lib/db";
+import { redis } from "@/lib/redis";
 import { topologicalSort } from "./utils";
 import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
@@ -95,40 +96,47 @@ export const executeWorkflow = inngest.createFunction(
       throw new NonRetriableError("Event ID or workflow ID is missing");
     }
 
-    const execution = await step.run("create-execution", async () => {
-      return prisma.execution.create({
-        data: {
-          workflowId,
-          inngestEventId,
-          // Captured so this execution can later be replayed through an
-          // edited graph by shadow-replay — without this there's nothing
-          // to feed back in as the "trigger input" on replay.
-          initialData: event.data.initialData ?? {},
-        },
-      });
-    });
+    // Single step: create execution record + load workflow (with Redis cache)
+    // Replaces 3 separate step.run() calls → 3x fewer Vercel cold-starts
+    const { execution, sortedNodes, userId } = await step.run("setup", async () => {
+      const CACHE_KEY = `workflow:${workflowId}`;
+      const CACHE_TTL = 300; // 5 minutes
 
-    const sortedNodes = await step.run("prepare-workflow", async () => {
-      const workflow = await prisma.workflow.findUniqueOrThrow({
-        where: { id: workflowId },
-        include: {
-          nodes: true,
-          connections: true,
-        },
-      });
+      // Try Redis cache first to avoid a DB round-trip
+      let workflow: { userId: string; nodes: unknown[]; connections: unknown[] } | null = null;
+      try {
+        workflow = await redis.get(CACHE_KEY);
+      } catch { /* Redis miss — fall through */ }
 
-      return topologicalSort(workflow.nodes, workflow.connections);
-    });
+      if (!workflow) {
+        workflow = await prisma.workflow.findUniqueOrThrow({
+          where: { id: workflowId },
+          select: {
+            userId: true,
+            nodes: true,
+            connections: true,
+          },
+        });
+        // Cache async (don't await — non-blocking)
+        redis.set(CACHE_KEY, workflow, { ex: CACHE_TTL }).catch(() => {});
+      }
 
-    const userId = await step.run("find-user-id", async () => {
-      const workflow = await prisma.workflow.findUniqueOrThrow({
-        where: { id: workflowId },
-        select: {
-          userId: true,
-        },
-      });
+      const [exec] = await Promise.all([
+        prisma.execution.create({
+          data: {
+            workflowId,
+            inngestEventId,
+            initialData: event.data.initialData ?? {},
+          },
+        }),
+      ]);
 
-      return workflow.userId;
+      const sorted = topologicalSort(
+        workflow.nodes as Parameters<typeof topologicalSort>[0],
+        workflow.connections as Parameters<typeof topologicalSort>[1],
+      );
+
+      return { execution: exec, sortedNodes: sorted, userId: workflow.userId };
     });
 
     // Initialize context with any initial data from the trigger
