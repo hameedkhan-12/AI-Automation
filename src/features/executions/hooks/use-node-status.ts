@@ -19,7 +19,18 @@ export function useNodeStatus({
   const [status, setStatus] = useState<NodeStatus>("initial");
 
   const { data } = useInngestSubscription({
-    refreshToken,
+    refreshToken: async () => {
+      const token = await refreshToken();
+      const isProd =
+        process.env.NODE_ENV === "production" ||
+        (typeof window !== "undefined" && !window.location.hostname.includes("localhost"));
+      return {
+        ...token,
+        app: {
+          apiBaseUrl: isProd ? "https://api.inngest.com" : "http://localhost:8288",
+        },
+      } as Realtime.Subscribe.Token;
+    },
     enabled: true,
   });
 
