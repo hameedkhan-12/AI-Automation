@@ -150,34 +150,37 @@ export const executeWorkflow = inngest.createFunction(
     for (const node of sortedNodes) {
       const executor = getExecutor(node.type as NodeType);
       const startedAt = Date.now();
-      try {
-        const nextContext = await executor({
-          data: node.data as Record<string, unknown>,
-          nodeId: node.id,
-          userId,
-          context,
-          step,
-          publish,
-          mode: "live",
-        });
 
-        await step.run(`log-node-${node.id}`, () =>
-          prisma.nodeExecutionLog.create({
+      try {
+        const nextContext = await step.run(`execute-node-${node.id}`, async () => {
+          const res = await executor({
+            data: node.data as Record<string, unknown>,
+            nodeId: node.id,
+            userId,
+            context,
+            step,
+            publish,
+            mode: "live",
+          });
+
+          await prisma.nodeExecutionLog.create({
             data: {
               executionId: execution.id,
               nodeId: node.id,
               nodeType: node.type,
               input: { data: node.data, contextSnapshot: context } as object,
-              output: nextContext as object,
+              output: res as object,
               durationMs: Date.now() - startedAt,
             },
-          }),
-        );
+          });
+
+          return res;
+        });
 
         context = nextContext;
       } catch (err) {
         if (err instanceof ConditionNotMetError) {
-          await step.run(`log-node-${node.id}`, () =>
+          await step.run(`log-condition-skipped-${node.id}`, () =>
             prisma.nodeExecutionLog.create({
               data: {
                 executionId: execution.id,
@@ -200,7 +203,6 @@ export const executeWorkflow = inngest.createFunction(
               nodeId: node.id,
               nodeType: node.type,
               input: { data: node.data, contextSnapshot: context } as object,
-              // omitted `output` — see comment above
               error: err instanceof Error ? err.message : String(err),
               durationMs: Date.now() - startedAt,
             },

@@ -32,6 +32,7 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
   await publish(marketDataTriggerChannel().status({ nodeId, status: "loading" }));
 
   let candle = context.candle as Candle | undefined;
+  let historicalCandles = context.historicalCandles as Candle[] | undefined;
 
   if (!candle && mode === "shadow") {
     throw new NonRetriableError(
@@ -41,13 +42,14 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
     );
   }
 
-  // If no candle provided (e.g. manual click on canvas), fetch the latest candle via adapter
+  // If no candle provided (e.g. manual click or scheduled run), fetch latest candle & historical lookback window in one go
   if (!candle) {
-    candle = await step.run("fetch-latest-candle", async () => {
+    const marketData = await step.run("fetch-market-data", async () => {
       try {
         const adapter = getExchangeAdapter(data.exchange!);
         const now = new Date();
-        const past = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30); // 30 days
+        // Fetch up to 120 days of historical bars so downstream indicators (SMA 10, 30, 50, etc.) are pre-warmed immediately
+        const past = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 120);
         const bars = await adapter.fetchHistoricalCandles(
           data.symbol!,
           past,
@@ -55,14 +57,15 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
           data.interval ?? "1d",
         );
         if (bars && bars.length > 0) {
-          return bars[bars.length - 1];
+          const latest = bars[bars.length - 1];
+          return { latest, bars };
         }
       } catch (err) {
         console.warn("[market-data-trigger] Could not fetch remote candle, using simulated candle:", err);
       }
 
-      // Fallback candle if API is unreachable or market is closed
-      return {
+      // Fallback simulated candle + bars if API is unreachable / market closed
+      const simulatedLatest = {
         timestamp: Date.now(),
         open: 180.25,
         high: 182.50,
@@ -70,23 +73,23 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
         close: 181.90,
         volume: 1500000,
       };
+      return { latest: simulatedLatest, bars: [simulatedLatest] };
     });
-  }
 
-  // Cache latest tick in Redis (non-blocking if Redis is unreachable)
-  await step.run("write-tick-to-redis", async () => {
-    try {
-      await redis.set(`tick:${data.symbol}`, candle, { ex: 3600 });
-    } catch {
-      // Ignored for local fallback
-    }
-  });
+    candle = marketData.latest;
+    historicalCandles = marketData.bars;
+
+    // Cache latest tick in Redis (non-blocking)
+    redis.set(`tick:${data.symbol}`, candle, { ex: 3600 }).catch(() => {});
+  }
 
   await publish(marketDataTriggerChannel().status({ nodeId, status: "ticking" }));
 
   return {
     ...context,
     candle,
+    historicalCandles,
     symbol: data.symbol,
+    exchange: data.exchange,
   };
 };

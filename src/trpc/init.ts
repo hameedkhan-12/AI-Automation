@@ -1,21 +1,15 @@
 import { auth } from '@/lib/auth';
 import { polarClient } from '@/lib/polar';
-import { env } from '@/lib/env';
 import { initTRPC, TRPCError } from '@trpc/server';
 import { headers } from 'next/headers';
 import { cache } from 'react';
-import superjson from "superjson";
+import superjson from "superjson"
+
 export const createTRPCContext = cache(async () => {
-  /**
-   * @see: https://trpc.io/docs/server/context
-   */
   return { userId: 'user_123' };
 });
 
 const t = initTRPC.create({
-  /**
-   * @see https://trpc.io/docs/server/data-transformers
-   */
   transformer: superjson,
 });
 // Base router and procedure helpers
@@ -36,6 +30,7 @@ export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
 
   return next({ ctx: { ...ctx, auth: session } });
 });
+import { env } from '@/lib/env';
 
 export const premiumProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {

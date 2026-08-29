@@ -3,6 +3,7 @@ import type { NodeExecutor } from "@/features/executions/types";
 import { indicatorChannel } from "@/inngest/channels/indicator";
 import { redis } from "@/lib/redis";
 import { prisma } from "@/lib/db";
+import { getExchangeAdapter } from "../../adapters/registry";
 import type { Candle } from "../../adapters/types";
 
 // technicalindicators uses CommonJS default export
@@ -13,10 +14,10 @@ type IndicatorData = {
   variableName?: string;
   type?: "SMA" | "EMA" | "RSI" | "MACD";
   period?: number;
-  source?: string; 
+  source?: string;
 };
 
-const SYNC_EVERY = 100;
+const SYNC_EVERY = 50;
 const MAX_BUFFER = 500;
 
 function getRedisKey(nodeId: string) {
@@ -26,17 +27,22 @@ function getRedisKey(nodeId: string) {
 async function readPriceBuffer(nodeId: string): Promise<number[]> {
   try {
     const raw = await redis.get<number[]>(getRedisKey(nodeId));
-    if (raw && Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw) && raw.length > 0) return raw;
   } catch {
     // fallback to Postgres indicator state if Redis is offline
   }
 
-  const record = await prisma.indicatorState.findUnique({
-    where: { nodeId_key: { nodeId, key: "prices" } },
-  });
-  if (record && Array.isArray(record.value)) {
-    return record.value as number[];
+  try {
+    const record = await prisma.indicatorState.findUnique({
+      where: { nodeId_key: { nodeId, key: "prices" } },
+    });
+    if (record && Array.isArray(record.value) && (record.value as number[]).length > 0) {
+      return record.value as number[];
+    }
+  } catch {
+    // Database read fallback
   }
+
   return [];
 }
 
@@ -46,11 +52,7 @@ async function writePriceBuffer(nodeId: string, prices: number[], workflowId: st
     await redis.set(getRedisKey(nodeId), capped);
     return;
   } catch {
-    // Redis unreachable — fall through to a Postgres write-through below.
-    // Without this, the buffer would silently never persist between ticks
-    // at all (each candle would start from empty), and a strategy would
-    // quietly never accumulate enough history to compute anything —
-    // exactly what happened before Upstash was configured.
+    // Fallback to Postgres write-through
   }
 
   try {
@@ -60,10 +62,7 @@ async function writePriceBuffer(nodeId: string, prices: number[], workflowId: st
       update: { value: capped },
     });
   } catch {
-    // Both Redis and Postgres write failed — genuinely nothing we can do
-    // to persist state this tick. Non-blocking on purpose (a live run
-    // shouldn't crash over this), but this is now a real data gap, not a
-    // cosmetic one.
+    // Non-blocking fail-safe
   }
 }
 
@@ -104,7 +103,6 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   data,
   nodeId,
   context,
-  step,
   publish,
 }) => {
   await publish(indicatorChannel().status({ nodeId, status: "loading" }));
@@ -127,26 +125,61 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
     throw new NonRetriableError(`Indicator: no candle found at context.${sourceKey}`);
   }
 
-  const result = await step.run("compute-indicator", async () => {
-    const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
+  const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
 
-    const prices = await readPriceBuffer(nodeId);
-    prices.push(candle.close);
+  // 1. Read existing price buffer
+  let prices = await readPriceBuffer(nodeId);
 
-    const value = computeIndicator(data.type!, period, prices);
-
-    await writePriceBuffer(nodeId, prices, workflowId);
-
-    if (prices.length % SYNC_EVERY === 0) {
-      await prisma.indicatorState.upsert({
-        where: { nodeId_key: { nodeId, key: "prices" } },
-        create: { nodeId, workflowId, key: "prices", value: prices },
-        update: { value: prices },
-      });
+  // 2. Automated Buffer Warm-Up:
+  // If the buffer has fewer prices than required by the period, pre-warm from historical candles
+  if (prices.length < period) {
+    if (context.historicalCandles && Array.isArray(context.historicalCandles) && context.historicalCandles.length > 0) {
+      const histCloses = (context.historicalCandles as Candle[])
+        .map((c) => c.close)
+        .filter((c): c is number => typeof c === "number");
+      if (histCloses.length > 0) {
+        prices = histCloses;
+      }
+    } else if (context.symbol && context.exchange) {
+      try {
+        const adapter = getExchangeAdapter(context.exchange as string);
+        const now = new Date();
+        const past = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 90);
+        const bars = await adapter.fetchHistoricalCandles(
+          context.symbol as string,
+          past,
+          now,
+          (context.interval as string) ?? "1d",
+        );
+        if (bars && bars.length > 0) {
+          prices = bars.map((b) => b.close).filter((c): c is number => typeof c === "number");
+        }
+      } catch (err) {
+        console.warn("[indicator] Could not backfill historical candles:", err);
+      }
     }
+  }
 
-    return { value, type: data.type, period, prices: prices.length };
-  });
+  // Ensure current tick's close price is included
+  if (prices.length === 0 || prices[prices.length - 1] !== candle.close) {
+    prices.push(candle.close);
+  }
+
+  // 3. Compute indicator
+  const value = computeIndicator(data.type!, period, prices);
+
+  // 4. Persist updated buffer (in background)
+  writePriceBuffer(nodeId, prices, workflowId).catch(() => {});
+
+  if (prices.length % SYNC_EVERY === 0) {
+    prisma.indicatorState.upsert({
+      where: { nodeId_key: { nodeId, key: "prices" } },
+      create: { nodeId, workflowId, key: "prices", value: prices },
+      update: { value: prices },
+    }).catch(() => {});
+  }
+
+  const result = { value, type: data.type, period, prices: prices.length };
 
   await publish(indicatorChannel().status({ nodeId, status: "success" }));
 

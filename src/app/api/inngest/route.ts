@@ -10,3 +10,7 @@ export const { GET, POST, PUT } = serve({
     executeShadowReplay,
   ],
 });
+
+// Extend Vercel serverless function timeout so Inngest steps don't get
+// cut off mid-execution. Hobby plan max is 60s, Pro plan allows up to 800s.
+export const maxDuration = 60;
