@@ -152,36 +152,35 @@ export const executeWorkflow = inngest.createFunction(
       const startedAt = Date.now();
 
       try {
-        const nextContext = await step.run(`execute-node-${node.id}`, async () => {
-          const res = await executor({
-            data: node.data as Record<string, unknown>,
-            nodeId: node.id,
-            userId,
-            context,
-            step,
-            publish,
-            mode: "live",
-          });
+        const nextContext = await executor({
+          data: node.data as Record<string, unknown>,
+          nodeId: node.id,
+          userId,
+          context,
+          step,
+          publish,
+          mode: "live",
+        });
 
-          await prisma.nodeExecutionLog.create({
+        // Persist node log directly without blocking next step
+        prisma.nodeExecutionLog
+          .create({
             data: {
               executionId: execution.id,
               nodeId: node.id,
               nodeType: node.type,
               input: { data: node.data, contextSnapshot: context } as object,
-              output: res as object,
+              output: nextContext as object,
               durationMs: Date.now() - startedAt,
             },
-          });
-
-          return res;
-        });
+          })
+          .catch((err) => console.error("[execute-workflow] log error:", err));
 
         context = nextContext;
       } catch (err) {
         if (err instanceof ConditionNotMetError) {
-          await step.run(`log-condition-skipped-${node.id}`, () =>
-            prisma.nodeExecutionLog.create({
+          prisma.nodeExecutionLog
+            .create({
               data: {
                 executionId: execution.id,
                 nodeId: node.id,
@@ -190,14 +189,15 @@ export const executeWorkflow = inngest.createFunction(
                 error: err.message,
                 durationMs: Date.now() - startedAt,
               },
-            }),
-          );
+            })
+            .catch((e) => console.error("[execute-workflow] skipped log error:", e));
+
           skippedReason = err.message;
           break;
         }
 
-        await step.run(`log-node-error-${node.id}`, () =>
-          prisma.nodeExecutionLog.create({
+        prisma.nodeExecutionLog
+          .create({
             data: {
               executionId: execution.id,
               nodeId: node.id,
@@ -206,8 +206,9 @@ export const executeWorkflow = inngest.createFunction(
               error: err instanceof Error ? err.message : String(err),
               durationMs: Date.now() - startedAt,
             },
-          }),
-        );
+          })
+          .catch((e) => console.error("[execute-workflow] error log error:", e));
+
         throw err;
       }
     }
