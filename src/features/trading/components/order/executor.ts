@@ -59,130 +59,125 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
 
   let result: import("../../adapters/types").OrderResult;
   try {
-    result = await step.run("place-order", async () => {
-      // 1. Decrypt credentials if available
-      let credentials: Record<string, string> = {};
-      if (data.credentialId) {
-        try {
-          const cred = await prisma.credential.findUnique({
-            where: { id: data.credentialId, userId },
-          });
-          if (cred) {
-            const decrypted = decrypt(cred.value);
-            try {
-              credentials = JSON.parse(decrypted) as Record<string, string>;
-            } catch {
-              credentials = { apiKey: decrypted };
-            }
+    // 1. Decrypt credentials if available
+    let credentials: Record<string, string> = {};
+    if (data.credentialId) {
+      try {
+        const cred = await prisma.credential.findUnique({
+          where: { id: data.credentialId, userId },
+        });
+        if (cred) {
+          const decrypted = decrypt(cred.value);
+          try {
+            credentials = JSON.parse(decrypted) as Record<string, string>;
+          } catch {
+            credentials = { apiKey: decrypted };
           }
-        } catch (err) {
-          console.warn("[order-executor] Decryption skipped, using paper simulation mode:", err);
         }
+      } catch (err) {
+        console.warn("[order-executor] Decryption skipped, using paper simulation mode:", err);
       }
+    }
 
-      const currentPrice = (context.candle as Candle | undefined)?.close ?? FALLBACK_SIMULATED_PRICE;
-      const hasRealCredentials =
-        Boolean(credentials.apiKey) && credentials.apiKey !== "encrypted_placeholder_value";
+    const currentPrice = (context.candle as Candle | undefined)?.close ?? FALLBACK_SIMULATED_PRICE;
+    const hasRealCredentials =
+      Boolean(credentials.apiKey) && credentials.apiKey !== "encrypted_placeholder_value";
 
-      // In shadow-replay mode, NEVER place a real order regardless of
-      // credentials — a replay must not have real side effects. This is
-      // the dry-run branch for the ORDER node.
-      const shouldSimulate = mode === "shadow" || !hasRealCredentials;
-      
-      if (mode === "live" && hasRealCredentials && !credentials.apiSecret) {
-        throw new Error(
-          "Alpaca credential is missing its secret key. Edit the credential and re-enter both the API Key ID and Secret Key.",
-        );
-      }
+    // In shadow-replay mode, NEVER place a real order regardless of
+    // credentials — a replay must not have real side effects. This is
+    // the dry-run branch for the ORDER node.
+    const shouldSimulate = mode === "shadow" || !hasRealCredentials;
+    
+    if (mode === "live" && hasRealCredentials && !credentials.apiSecret) {
+      throw new Error(
+        "Alpaca credential is missing its secret key. Edit the credential and re-enter both the API Key ID and Secret Key.",
+      );
+    }
 
-      let orderResult: import("../../adapters/types").OrderResult;
+    let orderResult: import("../../adapters/types").OrderResult;
 
-      if (shouldSimulate) {
-        // Deliberate simulated paper fill — no credentials configured, this
-        // is expected demo/dev behavior, not an error path.
-        orderResult = {
-          orderId: `sim_${clientOrderId}`,
-          status: "FILLED",
-          filledPrice: data.limitPrice ?? currentPrice,
-          filledQuantity: data.quantity!,
-        };
-      } else {
-        // Real credentials present — let a failure here throw for real.
-        orderResult = await adapter.placeOrder(
-          {
-            symbol: data.symbol!,
-            side: data.side!,
-            quantity: data.quantity!,
-            type: data.orderType ?? "MARKET",
-            limitPrice: data.limitPrice,
-            clientOrderId,
-          },
-          credentials,
-        );
-      }
+    if (shouldSimulate) {
+      // Deliberate simulated paper fill — no credentials configured, this
+      // is expected demo/dev behavior, not an error path.
+      orderResult = {
+        orderId: `sim_${clientOrderId}`,
+        status: "FILLED",
+        filledPrice: data.limitPrice ?? currentPrice,
+        filledQuantity: data.quantity!,
+      };
+    } else {
+      // Real credentials present — let a failure here throw for real.
+      orderResult = await adapter.placeOrder(
+        {
+          symbol: data.symbol!,
+          side: data.side!,
+          quantity: data.quantity!,
+          type: data.orderType ?? "MARKET",
+          limitPrice: data.limitPrice,
+          clientOrderId,
+        },
+        credentials,
+      );
+    }
 
-      // 3. Persist order record (upsert to be idempotent across step retries).
-      // Skipped entirely in shadow mode — a replay must not pollute real
-      // order history or position tracking, it only needs the in-memory
-      // orderResult for diffing.
-      if (mode !== "shadow") {
-        await prisma.paperOrder.upsert({
-          where: { clientOrderId },
-          create: {
-            userId,
-            workflowId: (context.__workflowId as string | undefined) ?? "unknown",
-            symbol: data.symbol!,
-            side: data.side!,
-            quantity: data.quantity!,
-            filledPrice: orderResult.filledPrice,
-            status: orderResult.status,
-            clientOrderId,
-          },
-          update: {
-            filledPrice: orderResult.filledPrice,
-            status: orderResult.status,
-          },
+    // 3. Persist order record (upsert to be idempotent across retries).
+    if (mode !== "shadow") {
+      await prisma.paperOrder.upsert({
+        where: { clientOrderId },
+        create: {
+          userId,
+          workflowId: (context.__workflowId as string | undefined) ?? "unknown",
+          symbol: data.symbol!,
+          side: data.side!,
+          quantity: data.quantity!,
+          filledPrice: orderResult.filledPrice,
+          status: orderResult.status,
+          clientOrderId,
+        },
+        update: {
+          filledPrice: orderResult.filledPrice,
+          status: orderResult.status,
+        },
+      });
+
+      // 4. Upsert paper position
+      if (orderResult.status === "FILLED" && orderResult.filledPrice) {
+        const filledQty = orderResult.filledQuantity ?? data.quantity!;
+        const filledPrice = orderResult.filledPrice;
+
+        const existing = await prisma.paperPosition.findUnique({
+          where: { userId_symbol: { userId, symbol: data.symbol! } },
         });
 
-        // 4. Upsert paper position
-        if (orderResult.status === "FILLED" && orderResult.filledPrice) {
-          const filledQty = orderResult.filledQuantity ?? data.quantity!;
-          const filledPrice = orderResult.filledPrice;
+        if (data.side === "BUY") {
+          const prevQty = existing?.quantity ?? 0;
+          const prevAvg = existing?.avgPrice ?? 0;
+          const newQty = prevQty + filledQty;
+          const newAvg = (prevQty * prevAvg + filledQty * filledPrice) / newQty;
 
-          const existing = await prisma.paperPosition.findUnique({
+          await prisma.paperPosition.upsert({
             where: { userId_symbol: { userId, symbol: data.symbol! } },
+            create: { userId, symbol: data.symbol!, quantity: newQty, avgPrice: newAvg },
+            update: { quantity: newQty, avgPrice: newAvg },
           });
-
-          if (data.side === "BUY") {
-            const prevQty = existing?.quantity ?? 0;
-            const prevAvg = existing?.avgPrice ?? 0;
-            const newQty = prevQty + filledQty;
-            const newAvg = (prevQty * prevAvg + filledQty * filledPrice) / newQty;
-
-            await prisma.paperPosition.upsert({
-              where: { userId_symbol: { userId, symbol: data.symbol! } },
-              create: { userId, symbol: data.symbol!, quantity: newQty, avgPrice: newAvg },
-              update: { quantity: newQty, avgPrice: newAvg },
+        } else {
+          // SELL
+          const newQty = (existing?.quantity ?? 0) - filledQty;
+          if (newQty <= 0) {
+            await prisma.paperPosition.deleteMany({
+              where: { userId, symbol: data.symbol! },
             });
           } else {
-            // SELL
-            const newQty = (existing?.quantity ?? 0) - filledQty;
-            if (newQty <= 0) {
-              await prisma.paperPosition.deleteMany({
-                where: { userId, symbol: data.symbol! },
-              });
-            } else {
-              await prisma.paperPosition.update({
-                where: { userId_symbol: { userId, symbol: data.symbol! } },
-                data: { quantity: newQty },
-              });
-            }
+            await prisma.paperPosition.update({
+              where: { userId_symbol: { userId, symbol: data.symbol! } },
+              data: { quantity: newQty },
+            });
           }
         }
       }
+    }
 
-      return orderResult;
-    });
+    result = orderResult;
   } catch (err) {
     // Real failure (real adapter error, not the deliberate simulation path
     // above) — report it honestly instead of faking a fill.

@@ -16,7 +16,6 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
   data,
   nodeId,
   context,
-  step,
   publish,
   mode = "live",
 }) => {
@@ -42,30 +41,33 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
     );
   }
 
-  // If no candle provided (e.g. manual click or scheduled run), fetch latest candle & historical lookback window in one go
+  // If no candle provided (e.g. manual click or scheduled run), fetch latest candle & historical lookback window directly
   if (!candle) {
-    const marketData = await step.run("fetch-market-data", async () => {
-      try {
-        const adapter = getExchangeAdapter(data.exchange!);
-        const now = new Date();
-        // Fetch up to 120 days of historical bars so downstream indicators (SMA 10, 30, 50, etc.) are pre-warmed immediately
-        const past = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 120);
-        const bars = await adapter.fetchHistoricalCandles(
-          data.symbol!,
-          past,
-          now,
-          data.interval ?? "1d",
-        );
-        if (bars && bars.length > 0) {
-          const latest = bars[bars.length - 1];
-          return { latest, bars };
-        }
-      } catch (err) {
-        console.warn("[market-data-trigger] Could not fetch remote candle, using simulated candle:", err);
-      }
+    let latestCandle: Candle | null = null;
+    let bars: Candle[] = [];
 
+    try {
+      const adapter = getExchangeAdapter(data.exchange!);
+      const now = new Date();
+      // Fetch up to 120 days of historical bars so downstream indicators (SMA 10, 30, 50, etc.) are pre-warmed immediately
+      const past = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 120);
+      bars = (await adapter.fetchHistoricalCandles(
+        data.symbol!,
+        past,
+        now,
+        data.interval ?? "1d",
+      )) ?? [];
+
+      if (bars && bars.length > 0) {
+        latestCandle = bars[bars.length - 1];
+      }
+    } catch (err) {
+      console.warn("[market-data-trigger] Remote fetch error:", err);
+    }
+
+    if (!latestCandle) {
       // Fallback simulated candle + bars if API is unreachable / market closed
-      const simulatedLatest = {
+      latestCandle = {
         timestamp: Date.now(),
         open: 180.25,
         high: 182.50,
@@ -73,11 +75,11 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
         close: 181.90,
         volume: 1500000,
       };
-      return { latest: simulatedLatest, bars: [simulatedLatest] };
-    });
+      bars = [latestCandle];
+    }
 
-    candle = marketData.latest;
-    historicalCandles = marketData.bars;
+    candle = latestCandle;
+    historicalCandles = bars;
 
     // Cache latest tick in Redis (non-blocking)
     redis.set(`tick:${data.symbol}`, candle, { ex: 3600 }).catch(() => {});

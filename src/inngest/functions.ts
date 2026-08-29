@@ -96,48 +96,44 @@ export const executeWorkflow = inngest.createFunction(
       throw new NonRetriableError("Event ID or workflow ID is missing");
     }
 
-    // Single step: create execution record + load workflow (with Redis cache)
-    // Replaces 3 separate step.run() calls → 3x fewer Vercel cold-starts
-    const { execution, sortedNodes, userId } = await step.run("setup", async () => {
-      const CACHE_KEY = `workflow:${workflowId}`;
-      const CACHE_TTL = 300; // 5 minutes
+    const CACHE_KEY = `workflow:${workflowId}`;
+    const CACHE_TTL = 300; // 5 minutes
 
-      // Try Redis cache first to avoid a DB round-trip
-      let workflow: { userId: string; nodes: unknown[]; connections: unknown[] } | null = null;
-      try {
-        workflow = await redis.get(CACHE_KEY);
-      } catch { /* Redis miss — fall through */ }
+    // Try Redis cache first to avoid a DB round-trip
+    let workflow: { userId: string; nodes: unknown[]; connections: unknown[] } | null = null;
+    try {
+      workflow = await redis.get(CACHE_KEY);
+    } catch {
+      /* Redis miss — fall through */
+    }
 
-      if (!workflow) {
-        workflow = await prisma.workflow.findUniqueOrThrow({
-          where: { id: workflowId },
-          select: {
-            userId: true,
-            nodes: true,
-            connections: true,
-          },
-        });
-        // Cache async (don't await — non-blocking)
-        redis.set(CACHE_KEY, workflow, { ex: CACHE_TTL }).catch(() => {});
-      }
+    if (!workflow) {
+      workflow = await prisma.workflow.findUniqueOrThrow({
+        where: { id: workflowId },
+        select: {
+          userId: true,
+          nodes: true,
+          connections: true,
+        },
+      });
+      // Cache async (don't await — non-blocking)
+      redis.set(CACHE_KEY, workflow, { ex: CACHE_TTL }).catch(() => {});
+    }
 
-      const [exec] = await Promise.all([
-        prisma.execution.create({
-          data: {
-            workflowId,
-            inngestEventId,
-            initialData: event.data.initialData ?? {},
-          },
-        }),
-      ]);
-
-      const sorted = topologicalSort(
-        workflow.nodes as Parameters<typeof topologicalSort>[0],
-        workflow.connections as Parameters<typeof topologicalSort>[1],
-      );
-
-      return { execution: exec, sortedNodes: sorted, userId: workflow.userId };
+    const execution = await prisma.execution.create({
+      data: {
+        workflowId,
+        inngestEventId,
+        initialData: event.data.initialData ?? {},
+      },
     });
+
+    const sortedNodes = topologicalSort(
+      workflow.nodes as Parameters<typeof topologicalSort>[0],
+      workflow.connections as Parameters<typeof topologicalSort>[1],
+    );
+
+    const userId = workflow.userId;
 
     // Initialize context with any initial data from the trigger
     let context: Record<string, unknown> = {
@@ -227,19 +223,18 @@ export const executeWorkflow = inngest.createFunction(
       }
     }
 
-    await step.run("update-execution", async () => {
-      if (skippedReason) {
-        return prisma.execution.update({
-          where: { inngestEventId },
-          data: {
-            status: ExecutionStatus.SKIPPED,
-            completedAt: new Date(),
-            output: context as object,
-            error: skippedReason,
-          },
-        });
-      }
-      return prisma.execution.update({
+    if (skippedReason) {
+      await prisma.execution.update({
+        where: { inngestEventId },
+        data: {
+          status: ExecutionStatus.SKIPPED,
+          completedAt: new Date(),
+          output: context as object,
+          error: skippedReason,
+        },
+      });
+    } else {
+      await prisma.execution.update({
         where: { inngestEventId },
         data: {
           status: ExecutionStatus.SUCCESS,
@@ -247,7 +242,7 @@ export const executeWorkflow = inngest.createFunction(
           output: context as object,
         },
       });
-    });
+    }
 
     return {
       workflowId,
