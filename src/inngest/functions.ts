@@ -146,6 +146,20 @@ export const executeWorkflow = inngest.createFunction(
       __executionId: inngestEventId,
     };
 
+    // Direct non-step publisher: sends live status updates to frontend WebSockets without suspending the Inngest function pipeline
+    const directPublish: typeof publish = async (input: any) => {
+      try {
+        const { topic, channel: channelName, data } = await input;
+        const api = (inngest as any)["inngestApi"];
+        if (api && typeof api.publish === "function") {
+          await api.publish({ topics: [topic], channel: channelName, runId: inngestEventId }, data);
+        }
+      } catch {
+        // Non-blocking real-time broadcast
+      }
+      return input;
+    };
+
     let skippedReason: string | null = null;
     for (const node of sortedNodes) {
       const executor = getExecutor(node.type as NodeType);
@@ -158,7 +172,7 @@ export const executeWorkflow = inngest.createFunction(
           userId,
           context,
           step,
-          publish,
+          publish: directPublish,
           mode: "live",
         });
 

@@ -25,11 +25,11 @@ function readPath(obj: Record<string, unknown>, path: string): unknown {
 function getRedisKey(nodeId: string) {
   return `condition:${nodeId}:prevResult`;
 }
+
 export const conditionExecutor: NodeExecutor<ConditionData> = async ({
   data,
   nodeId,
   context,
-  step,
   publish,
 }) => {
   await publish(conditionChannel().status({ nodeId, status: "loading" }));
@@ -53,7 +53,7 @@ export const conditionExecutor: NodeExecutor<ConditionData> = async ({
   const left = typeof leftRaw === "number" ? leftRaw : Number(leftRaw);
   const right = typeof rightRaw === "number" ? rightRaw : Number(rightRaw);
 
-  // Insufficient data upstream (e.g. indicator hasn't seen enough candles
+  // Insufficient data upstream (e.g. indicator hasn't seen enough candles)
   if (Number.isNaN(left) || Number.isNaN(right)) {
     await publish(conditionChannel().status({ nodeId, status: "skipped" }));
     throw new ConditionNotMetError(
@@ -61,51 +61,41 @@ export const conditionExecutor: NodeExecutor<ConditionData> = async ({
     );
   }
 
-  const result = await step.run("evaluate-condition", async () => {
-    const simpleResult = (() => {
-      switch (data.operator) {
-        case ">": return left > right;
-        case "<": return left < right;
-        case ">=": return left >= right;
-        case "<=": return left <= right;
-        case "==": return left === right;
-        case "!=": return left !== right;
-        case "crosses_above": return left > right; // "is currently above" — combined with prev below, below
-        case "crosses_below": return left < right;
-        default: return false;
-      }
-    })();
-
-    if (data.operator !== "crosses_above" && data.operator !== "crosses_below") {
-      return simpleResult;
+  const simpleResult = (() => {
+    switch (data.operator) {
+      case ">": return left > right;
+      case "<": return left < right;
+      case ">=": return left >= right;
+      case "<=": return left <= right;
+      case "==": return left === right;
+      case "!=": return left !== right;
+      case "crosses_above": return left > right;
+      case "crosses_below": return left < right;
+      default: return false;
     }
+  })();
 
-    // Crossover needs the PREVIOUS tick's raw comparison (left > right) to
+  let result = simpleResult;
+
+  if (data.operator === "crosses_above" || data.operator === "crosses_below") {
     let prevAbove: boolean | null = null;
     try {
       prevAbove = await redis.get<boolean>(getRedisKey(nodeId));
     } catch {
-      // Redis unreachable — fall back to treating this as the first tick.
+      // Redis unreachable
     }
 
     const currentlyAbove = left > right;
-    try {
-      await redis.set(getRedisKey(nodeId), currentlyAbove);
-    } catch {
-      // non-blocking
-    }
+    redis.set(getRedisKey(nodeId), currentlyAbove).catch(() => {});
 
     if (prevAbove === null) {
-      // First tick we've ever seen — no previous state to compare against,
-      return false;
+      result = false;
+    } else if (data.operator === "crosses_above") {
+      result = prevAbove === false && currentlyAbove === true;
+    } else {
+      result = prevAbove === true && currentlyAbove === false;
     }
-
-    if (data.operator === "crosses_above") {
-      return prevAbove === false && currentlyAbove === true;
-    }
-    // crosses_below
-    return prevAbove === true && currentlyAbove === false;
-  });
+  }
 
   if (!result) {
     await publish(conditionChannel().status({ nodeId, status: "skipped" }));
