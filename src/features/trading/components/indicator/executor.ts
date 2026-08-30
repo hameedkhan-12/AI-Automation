@@ -20,13 +20,23 @@ type IndicatorData = {
 const SYNC_EVERY = 50;
 const MAX_BUFFER = 500;
 
-function getRedisKey(nodeId: string) {
-  return `indicator:${nodeId}:prices`;
+// Include interval in the cache key so that switching from 1d → 1m doesn't
+// silently reuse a buffer of daily prices for per-minute computations, which
+// would produce a meaningless mixed-timescale SMA.
+function getRedisKey(nodeId: string, interval: string) {
+  return `indicator:${nodeId}:${interval}:prices`;
 }
 
-async function readPriceBuffer(nodeId: string): Promise<number[]> {
+// Postgres key remains a stable string per node so that the DB record
+// uniqueness constraint (nodeId, key) doesn't need a migration.
+// We store the interval inside the key value to disambiguate on read.
+function getDbKey(interval: string) {
+  return `prices:${interval}`;
+}
+
+async function readPriceBuffer(nodeId: string, interval: string): Promise<number[]> {
   try {
-    const raw = await redis.get<number[]>(getRedisKey(nodeId));
+    const raw = await redis.get<number[]>(getRedisKey(nodeId, interval));
     if (raw && Array.isArray(raw) && raw.length > 0) return raw;
   } catch {
     // fallback to Postgres indicator state if Redis is offline
@@ -34,7 +44,7 @@ async function readPriceBuffer(nodeId: string): Promise<number[]> {
 
   try {
     const record = await prisma.indicatorState.findUnique({
-      where: { nodeId_key: { nodeId, key: "prices" } },
+      where: { nodeId_key: { nodeId, key: getDbKey(interval) } },
     });
     if (record && Array.isArray(record.value) && (record.value as number[]).length > 0) {
       return record.value as number[];
@@ -46,19 +56,20 @@ async function readPriceBuffer(nodeId: string): Promise<number[]> {
   return [];
 }
 
-async function writePriceBuffer(nodeId: string, prices: number[], workflowId: string): Promise<void> {
+async function writePriceBuffer(nodeId: string, interval: string, prices: number[], workflowId: string): Promise<void> {
   const capped = prices.slice(-MAX_BUFFER);
   try {
-    await redis.set(getRedisKey(nodeId), capped);
+    await redis.set(getRedisKey(nodeId, interval), capped);
     return;
   } catch {
     // Fallback to Postgres write-through
   }
 
   try {
+    const key = getDbKey(interval);
     await prisma.indicatorState.upsert({
-      where: { nodeId_key: { nodeId, key: "prices" } },
-      create: { nodeId, workflowId, key: "prices", value: capped },
+      where: { nodeId_key: { nodeId, key } },
+      create: { nodeId, workflowId, key, value: capped },
       update: { value: capped },
     });
   } catch {
@@ -127,11 +138,19 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
 
   const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
 
-  // 1. Read existing price buffer
-  let prices = await readPriceBuffer(nodeId);
+  // Resolve the interval from context (set by market-data-trigger). Fall back
+  // to "1d" only if no trigger node ran before this one, which should not happen
+  // in a properly composed workflow.
+  const interval = (context.interval as string | undefined) ?? "1d";
+
+  // 1. Read existing price buffer — interval-scoped so that switching the
+  //    node from 1d → 1m starts a fresh buffer instead of mixing timescales.
+  let prices = await readPriceBuffer(nodeId, interval);
 
   // 2. Automated Buffer Warm-Up:
-  // If the buffer has fewer prices than required by the period, pre-warm from historical candles
+  // If the buffer has fewer prices than required by the period, pre-warm from
+  // the historical candles that the market-data-trigger already fetched (free)
+  // or by calling the adapter directly (fallback, costs one API call).
   if (prices.length < period) {
     if (context.historicalCandles && Array.isArray(context.historicalCandles) && context.historicalCandles.length > 0) {
       const histCloses = (context.historicalCandles as Candle[])
@@ -149,7 +168,7 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
           context.symbol as string,
           past,
           now,
-          (context.interval as string) ?? "1d",
+          interval,
         );
         if (bars && bars.length > 0) {
           prices = bars.map((b) => b.close).filter((c): c is number => typeof c === "number");
@@ -169,17 +188,18 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   const value = computeIndicator(data.type!, period, prices);
 
   // 4. Persist updated buffer (in background)
-  writePriceBuffer(nodeId, prices, workflowId).catch(() => {});
+  writePriceBuffer(nodeId, interval, prices, workflowId).catch(() => {});
 
   if (prices.length % SYNC_EVERY === 0) {
+    const key = getDbKey(interval);
     prisma.indicatorState.upsert({
-      where: { nodeId_key: { nodeId, key: "prices" } },
-      create: { nodeId, workflowId, key: "prices", value: prices },
+      where: { nodeId_key: { nodeId, key } },
+      create: { nodeId, workflowId, key, value: prices },
       update: { value: prices },
     }).catch(() => {});
   }
 
-  const result = { value, type: data.type, period, prices: prices.length };
+  const result = { value, type: data.type, period, prices: prices.length, interval };
 
   await publish(indicatorChannel().status({ nodeId, status: "success" }));
 

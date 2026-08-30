@@ -7,10 +7,10 @@ import { ConditionNotMetError } from "@/lib/condition-not-met-error";
 type ComparisonOperator = ">" | "<" | ">=" | "<=" | "==" | "!=" | "crosses_above" | "crosses_below";
 
 type ConditionData = {
-  leftPath?: string;  
+  leftPath?: string;
   operator?: ComparisonOperator;
-  rightPath?: string; 
-  rightValue?: number; 
+  rightPath?: string;
+  rightValue?: number;
 };
 
 function readPath(obj: Record<string, unknown>, path: string): unknown {
