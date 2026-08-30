@@ -86,7 +86,11 @@ export const conditionExecutor: NodeExecutor<ConditionData> = async ({
     }
 
     const currentlyAbove = left > right;
-    redis.set(getRedisKey(nodeId), currentlyAbove).catch(() => {});
+    try {
+      await redis.set(getRedisKey(nodeId), currentlyAbove);
+    } catch {
+      // Redis write fallback
+    }
 
     if (prevAbove === null) {
       result = false;

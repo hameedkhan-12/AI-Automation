@@ -93,5 +93,6 @@ export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = as
     historicalCandles,
     symbol: data.symbol,
     exchange: data.exchange,
+    interval: data.interval,
   };
 };

@@ -175,9 +175,9 @@ The production architecture is roughly:
                                                   ▲
                                                   │ WebSocket
                                            ┌──────┴───────┐
-                                           │   Railway   │
-                                           │    Market   │
-                                           │   Listener  │
+                                           │   AWS EC2    │
+                                           │    Market    │
+                                           │   Listener   │
                                            └──────────────┘
 ```
 
@@ -371,7 +371,7 @@ This avoids querying PostgreSQL for every market tick.
 
 Indicator state is periodically synchronized to PostgreSQL through the `IndicatorState` model.
 
-The current implementation synchronizes state every 100 ticks.
+The current implementation synchronizes state every 50 ticks.
 
 This provides a practical tradeoff between:
 
@@ -432,6 +432,34 @@ Backtesting produces:
 * Win rate
 
 The same candle shape is used for live and historical execution, allowing indicator and order logic to remain consistent between the two modes.
+
+---
+
+# 🔂 Shadow Replay
+
+Flux includes a shadow-replay feature for regression testing workflow edits before saving them.
+
+```text
+Open Workflow Editor
+      ↓
+Make unsaved edits
+      ↓
+Click "Test against history"
+      ↓
+Select a past execution to replay
+      ↓
+Run edited graph against the original tick data
+      ↓
+Compare output diff vs original execution
+```
+
+Shadow replay re-runs the modified node graph against the recorded `initialData` from a real past execution, in a dry-run mode where:
+
+* Order nodes never place real orders (shadow mode enforced at executor level)
+* The result is compared node-by-node against the original execution output
+* A structural diff is produced showing what changed in context values
+
+**Current limitation**: shadow replay requires the source execution to have been triggered via a live "Execute workflow" run or a real market tick. Executions created by `executeBacktest` are not currently eligible because the backtest runner does not record per-node `initialData`.
 
 ---
 
@@ -547,7 +575,7 @@ Major models include:
 * Vercel
 * Neon PostgreSQL
 * Upstash Redis
-* Railway
+* AWS EC2
 * Inngest
 * Sentry
 
@@ -562,16 +590,16 @@ Major models include:
 
 Flux uses a hybrid deployment architecture because different components have different runtime requirements.
 
-| Component                     | Platform |
-| ----------------------------- | -------- |
-| Next.js application           | Vercel   |
-| API routes / webhooks         | Vercel   |
-| Background workflow execution | Inngest  |
-| PostgreSQL                    | Neon     |
-| Redis                         | Upstash  |
-| Persistent market listener    | Railway  |
-| Market data / paper trading   | Alpaca   |
-| Error monitoring              | Sentry   |
+| Component                     | Platform    |
+| ----------------------------- | ----------- |
+| Next.js application           | Vercel      |
+| API routes / webhooks         | Vercel      |
+| Background workflow execution | Inngest     |
+| PostgreSQL                    | Neon        |
+| Redis                         | Upstash     |
+| Persistent market listener    | AWS EC2     |
+| Market data / paper trading   | Alpaca      |
+| Error monitoring              | Sentry      |
 
 ### Why hybrid?
 
@@ -808,11 +836,15 @@ Flux is an actively developed project and intentionally makes several engineerin
 
 ### Indicator state recovery
 
-Redis contains the hot rolling buffer while PostgreSQL is periodically synchronized. A process failure can therefore require rebuilding recent indicator state.
+Redis contains the hot rolling buffer while PostgreSQL is periodically synchronized every 50 ticks. A process failure can therefore require rebuilding recent indicator state from the Alpaca historical API, which the indicator executor does automatically on the next execution.
 
 ### Backtesting execution
 
 Historical candles are replayed within a single background execution rather than creating a durable checkpoint for every candle. This reduces overhead but means a failed backtest may need to restart.
+
+### Shadow replay eligibility
+
+Shadow replay currently only works against executions triggered via live workflow runs (manual or market-tick triggered). Executions produced by `executeBacktest` do not record per-node `initialData`, so they cannot be selected as a shadow replay source.
 
 ### Paper trading
 
@@ -820,7 +852,7 @@ The trading vertical is designed around paper trading and is not intended to man
 
 ### Market listener
 
-Live market data requires a persistent runtime and therefore cannot be treated like a conventional serverless API route.
+The market listener process is deployed on AWS EC2 and exposes a control HTTP API on port 3001. The internal `/api/internal/market-tick` route it calls on the Next.js app currently has no authentication — any caller who knows the URL can trigger workflow executions. Production hardening (shared secret header validation) is on the roadmap.
 
 ---
 
@@ -832,6 +864,8 @@ Planned improvements include:
 * [ ] Retry and timeout configuration per node
 * [ ] Improved execution logs and observability
 * [ ] Workflow-level error handling
+* [ ] Internal service authentication for `/api/internal/market-tick`
+* [ ] Shadow replay support for backtest-sourced executions
 * [ ] More integrations
 * [ ] More advanced trading strategy operators
 * [ ] Improved backtesting metrics

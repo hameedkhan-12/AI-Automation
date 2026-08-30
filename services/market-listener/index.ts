@@ -4,6 +4,7 @@ import http from "http";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const ALPACA_WS_URL = "wss://stream.data.alpaca.markets/v2/iex";
 const CONTROL_PORT = Number(process.env.LISTENER_CONTROL_PORT ?? 3001);
+const FORWARD_TIMEOUT_MS = 10_000; // 10 s — prevents a slow app from blocking tick processing
 
 // symbol -> Set of workflowIds
 const subscriptions = new Map<string, Set<string>>();
@@ -18,14 +19,22 @@ async function forwardTick(symbol: string, candle: Record<string, unknown>): Pro
   if (!workflowIds || workflowIds.size === 0) return;
 
   for (const workflowId of workflowIds) {
+    // Bug fix: no timeout on the original fetch meant a slow or down Next.js app
+    // would block the WebSocket message handler indefinitely, stalling all subsequent
+    // tick processing. Added an AbortController timeout to bound each forward attempt.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FORWARD_TIMEOUT_MS);
     try {
       await fetch(`${APP_URL}/api/internal/market-tick`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symbol, candle, workflowId }),
+        signal: controller.signal,
       });
     } catch (err) {
       console.error(`[listener] Failed to forward tick for ${workflowId}:`, err);
+    } finally {
+      clearTimeout(timer);
     }
   }
 }
@@ -116,6 +125,15 @@ function removeSubscription(symbol: string, workflowId: string): void {
 const controlServer = http.createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
 
+  // Bug fix: some HTTP clients (e.g. curl) send `Expect: 100-continue` on POST.
+  // A raw Node.js HTTP server does NOT automatically respond with `100 Continue`,
+  // so the client would stall waiting for it, then close the connection after its
+  // expect-timeout — appearing as a silent failure. Writing `100 Continue` explicitly
+  // unblocks these clients so the body is actually sent.
+  if (req.headers["expect"] === "100-continue") {
+    res.writeContinue();
+  }
+
   if (req.method === "GET" && req.url === "/status") {
     const status = Object.fromEntries(
       [...subscriptions.entries()].map(([sym, ids]) => [sym, [...ids]]),
@@ -127,7 +145,17 @@ const controlServer = http.createServer((req, res) => {
   let body = "";
   req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
   req.on("end", () => {
-    const data = JSON.parse(body || "{}") as { symbol?: string; workflowId?: string };
+    // Bug fix: JSON.parse throws on malformed input (e.g. empty body, curl quirks).
+    // The original code had no try-catch, so a single bad request would crash the
+    // entire control server process.
+    let data: { symbol?: string; workflowId?: string } = {};
+    try {
+      data = JSON.parse(body || "{}") as { symbol?: string; workflowId?: string };
+    } catch {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "Invalid JSON body" }));
+      return;
+    }
 
     if (!data.symbol || !data.workflowId) {
       res.statusCode = 400;
