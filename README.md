@@ -607,6 +607,16 @@ The Next.js application is well suited to serverless deployment, while the marke
 
 This allows each component to use infrastructure appropriate to its workload rather than forcing the entire application into a single deployment model.
 
+### Service-to-Service Authentication
+
+Service-to-service communication between the Next.js API (`/api/internal/market-tick` on Vercel) and the standalone market listener process (AWS EC2) is secured via a shared secret header:
+
+* **Environment Variable**: `INTERNAL_API_SECRET`
+* **Requirement**: Generate a secure random 32-byte hex secret (`openssl rand -hex 32`) and configure the **exact same value** in both:
+  1. **Vercel** Project Environment Variables (`INTERNAL_API_SECRET`)
+  2. **AWS EC2** market-listener environment / `.env` (`INTERNAL_API_SECRET`)
+* All requests in both directions are validated using timing-safe comparisons (`crypto.timingSafeEqual` over SHA-256 digests) to prevent timing attacks.
+
 ---
 
 # 🚀 Getting Started
@@ -852,7 +862,7 @@ The trading vertical is designed around paper trading and is not intended to man
 
 ### Market listener
 
-The market listener process is deployed on AWS EC2 and exposes a control HTTP API on port 3001. The internal `/api/internal/market-tick` route it calls on the Next.js app currently has no authentication — any caller who knows the URL can trigger workflow executions. Production hardening (shared secret header validation) is on the roadmap.
+The market listener process is deployed on AWS EC2 and exposes a control HTTP API on port 3001. Service-to-service communication between the listener and Next.js app is secured using a shared `INTERNAL_API_SECRET` validated with timing-safe comparison on both endpoints (`/api/internal/market-tick` on Next.js and `/subscribe` / `/unsubscribe` on the listener). The listener's `GET /status` endpoint remains public for health checks.
 
 ---
 
@@ -864,14 +874,14 @@ Planned improvements include:
 * [ ] Retry and timeout configuration per node
 * [ ] Improved execution logs and observability
 * [ ] Workflow-level error handling
-* [ ] Internal service authentication for `/api/internal/market-tick`
+* [x] Internal service authentication for `/api/internal/market-tick`
 * [ ] Shadow replay support for backtest-sourced executions
 * [ ] More integrations
 * [ ] More advanced trading strategy operators
 * [ ] Improved backtesting metrics
 * [ ] Additional exchange adapters
 * [ ] Production-grade webhook authentication
-* [ ] Internal service authentication
+* [x] Internal service authentication
 * [ ] Rate limiting
 
 ---

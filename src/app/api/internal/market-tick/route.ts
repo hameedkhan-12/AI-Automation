@@ -1,27 +1,36 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { inngest } from "@/inngest/client";
 import { redis } from "@/lib/redis";
+import { validateInternalAuth } from "@/lib/internal-auth";
 import type { Candle } from "@/features/trading/adapters/types";
 
-/**
- * POST /api/internal/market-tick
- *
- * Called by the standalone market-listener process to forward a tick into
- * Inngest. This route is the only point of contact between the listener and
- * the Next.js app — the listener holds zero business logic.
- *
- * Body: { symbol: string, candle: Candle, workflowId: string }
- *
- * The route:
- *  1. Writes the latest candle to Redis (tick:{symbol}) for LiveMarketDataProvider
- *  2. Sends an Inngest event to trigger the workflow for this tick
- */
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const body = (await req.json()) as {
+  const authHeader = req.headers.get("authorization");
+  const customSecretHeader = req.headers.get("x-internal-secret");
+
+  if (!validateInternalAuth(authHeader, customSecretHeader)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: {
     symbol?: string;
     candle?: Candle;
     workflowId?: string;
   };
+
+  try {
+    body = (await req.json()) as {
+      symbol?: string;
+      candle?: Candle;
+      workflowId?: string;
+    };
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
 
   if (!body.symbol || !body.candle || !body.workflowId) {
     return NextResponse.json(

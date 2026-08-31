@@ -51,7 +51,7 @@ jobs:
               "docker pull '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest'",
               "docker stop market-listener || true",
               "docker rm market-listener || true",
-              "docker run -d --name market-listener --restart always -p 3001:3001 --env-file /home/ubuntu/.env.listener '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest'",
+              "docker run -d --name market-listener --restart always -p 3001:3001 --env-file /home/ubuntu/.env '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest'",
               "docker image prune -af"
             ]' \
             --comment "Deploy market listener"

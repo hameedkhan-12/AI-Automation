@@ -115,6 +115,7 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   nodeId,
   context,
   publish,
+  mode = "live",
 }) => {
   await publish(indicatorChannel().status({ nodeId, status: "loading" }));
 
@@ -159,7 +160,16 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
       if (histCloses.length > 0) {
         prices = histCloses;
       }
-    } else if (context.symbol && context.exchange) {
+    } else if (mode !== "shadow" && context.symbol && context.exchange) {
+      // Real network call to the exchange adapter — must never happen
+      // during a shadow replay. A replay is meant to be free and to have
+      // no real external effects; without this guard, a node that needs
+      // re-execution but has a short buffer would silently make a live
+      // API call every time "Test Changes" is clicked. If the buffer is
+      // short during a shadow replay, we deliberately fall through with
+      // whatever history is available — computeIndicator() already
+      // returns null when there isn't enough, which the Condition node
+      // correctly treats as "not met yet," same as it would live.
       try {
         const adapter = getExchangeAdapter(context.exchange as string);
         const now = new Date();

@@ -1,9 +1,11 @@
 import WebSocket from "ws";
 import http from "http";
+import crypto from "crypto";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const ALPACA_WS_URL = "wss://stream.data.alpaca.markets/v2/iex";
 const CONTROL_PORT = Number(process.env.LISTENER_CONTROL_PORT ?? 3001);
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 const FORWARD_TIMEOUT_MS = 10_000; // 10 s — prevents a slow app from blocking tick processing
 
 // symbol -> Set of workflowIds
@@ -12,6 +14,31 @@ const subscriptions = new Map<string, Set<string>>();
 let ws: WebSocket | null = null;
 let authenticated = false;
 
+// ─── Timing-safe Auth Validation ──────────────────────────────────────────────
+
+function timingSafeCompare(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  const hashA = crypto.createHash("sha256").update(a).digest();
+  const hashB = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
+function extractSecret(req: http.IncomingMessage): string | null {
+  const authHeader = req.headers["authorization"];
+  if (typeof authHeader === "string") {
+    const trimmed = authHeader.trim();
+    if (trimmed.toLowerCase().startsWith("bearer ")) {
+      return trimmed.slice(7).trim();
+    }
+    return trimmed;
+  }
+  const customSecret = req.headers["x-internal-secret"];
+  if (typeof customSecret === "string") {
+    return customSecret.trim();
+  }
+  return null;
+}
+
 // ─── Forward tick to Next.js ──────────────────────────────────────────────────
 
 async function forwardTick(symbol: string, candle: Record<string, unknown>): Promise<void> {
@@ -19,15 +46,19 @@ async function forwardTick(symbol: string, candle: Record<string, unknown>): Pro
   if (!workflowIds || workflowIds.size === 0) return;
 
   for (const workflowId of workflowIds) {
-    // Bug fix: no timeout on the original fetch meant a slow or down Next.js app
-    // would block the WebSocket message handler indefinitely, stalling all subsequent
-    // tick processing. Added an AbortController timeout to bound each forward attempt.
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FORWARD_TIMEOUT_MS);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (INTERNAL_API_SECRET) {
+        headers["Authorization"] = `Bearer ${INTERNAL_API_SECRET}`;
+      }
+
       await fetch(`${APP_URL}/api/internal/market-tick`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ symbol, candle, workflowId }),
         signal: controller.signal,
       });
@@ -125,15 +156,11 @@ function removeSubscription(symbol: string, workflowId: string): void {
 const controlServer = http.createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
 
-  // Bug fix: some HTTP clients (e.g. curl) send `Expect: 100-continue` on POST.
-  // A raw Node.js HTTP server does NOT automatically respond with `100 Continue`,
-  // so the client would stall waiting for it, then close the connection after its
-  // expect-timeout — appearing as a silent failure. Writing `100 Continue` explicitly
-  // unblocks these clients so the body is actually sent.
   if (req.headers["expect"] === "100-continue") {
     res.writeContinue();
   }
 
+  // GET /status remains open for health monitoring
   if (req.method === "GET" && req.url === "/status") {
     const status = Object.fromEntries(
       [...subscriptions.entries()].map(([sym, ids]) => [sym, [...ids]]),
@@ -142,12 +169,19 @@ const controlServer = http.createServer((req, res) => {
     return;
   }
 
+  // All mutating control routes require internal auth verification
+  if (req.method === "POST") {
+    const providedSecret = extractSecret(req);
+    if (!timingSafeCompare(providedSecret, INTERNAL_API_SECRET)) {
+      res.statusCode = 401;
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
+  }
+
   let body = "";
   req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
   req.on("end", () => {
-    // Bug fix: JSON.parse throws on malformed input (e.g. empty body, curl quirks).
-    // The original code had no try-catch, so a single bad request would crash the
-    // entire control server process.
     let data: { symbol?: string; workflowId?: string } = {};
     try {
       data = JSON.parse(body || "{}") as { symbol?: string; workflowId?: string };

@@ -29,6 +29,8 @@ const envSchema = z.object({
   ALPACA_API_KEY: optionalString,
   ALPACA_API_SECRET: optionalString,
   ALPACA_BASE_URL: optionalString,
+  // Internal service-to-service communication (Next.js <-> Market Listener)
+  INTERNAL_API_SECRET: optionalString,
 });
 
 export const env = envSchema.parse(process.env);
