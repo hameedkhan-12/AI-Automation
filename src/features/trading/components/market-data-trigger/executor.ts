@@ -9,7 +9,6 @@ type MarketDataTriggerData = {
   symbol?: string;
   exchange?: string;
   interval?: string;
-  mode?: "live" | "backtest";
 };
 
 export const marketDataTriggerExecutor: NodeExecutor<MarketDataTriggerData> = async ({

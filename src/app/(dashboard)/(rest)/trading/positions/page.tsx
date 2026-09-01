@@ -51,7 +51,14 @@ export default async function PositionsPage() {
                 const estValue = pos.quantity * pos.avgPrice;
                 return (
                   <tr key={pos.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-5 py-4 font-semibold">{pos.symbol}</td>
+                    <td className="px-5 py-4 font-semibold">
+                      <Link
+                        href={`/trading/${pos.symbol}`}
+                        className="text-[#00E5A0] hover:underline"
+                      >
+                        {pos.symbol}
+                      </Link>
+                    </td>
                     <td className="px-5 py-4 text-right font-mono font-medium">
                       {pos.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                     </td>

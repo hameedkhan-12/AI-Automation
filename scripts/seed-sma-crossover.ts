@@ -68,7 +68,6 @@ async function seed() {
               symbol: "AAPL",
               exchange: "alpaca",
               interval: "1d",
-              mode: "backtest",
             },
           },
           {

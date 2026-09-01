@@ -20,9 +20,6 @@ const formSchema = z.object({
   symbol: z.string().min(1, "Symbol is required").toUpperCase(),
   exchange: z.enum(["alpaca"]),
   interval: z.enum(["1m", "5m", "15m", "1h", "1d"]),
-  mode: z.enum(["live", "backtest"]),
-  backtestFrom: z.string().optional(),
-  backtestTo: z.string().optional(),
 });
 
 export type MarketDataTriggerFormValues = z.infer<typeof formSchema>;
@@ -41,9 +38,6 @@ export const MarketDataTriggerDialog = ({ open, onOpenChange, onSubmit, defaultV
       symbol: defaultValues.symbol ?? "",
       exchange: defaultValues.exchange ?? "alpaca",
       interval: defaultValues.interval ?? "1d",
-      mode: defaultValues.mode ?? "live",
-      backtestFrom: defaultValues.backtestFrom ?? "",
-      backtestTo: defaultValues.backtestTo ?? "",
     },
   });
 
@@ -53,14 +47,9 @@ export const MarketDataTriggerDialog = ({ open, onOpenChange, onSubmit, defaultV
         symbol: defaultValues.symbol ?? "",
         exchange: defaultValues.exchange ?? "alpaca",
         interval: defaultValues.interval ?? "1d",
-        mode: defaultValues.mode ?? "live",
-        backtestFrom: defaultValues.backtestFrom ?? "",
-        backtestTo: defaultValues.backtestTo ?? "",
       });
     }
   }, [open, defaultValues, form]);
-
-  const mode = form.watch("mode");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,37 +94,6 @@ export const MarketDataTriggerDialog = ({ open, onOpenChange, onSubmit, defaultV
                 </FormItem>
               )} />
             </div>
-            <FormField control={form.control} name="mode" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Mode</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="backtest">Backtest</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {mode === "backtest" && (
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="backtestFrom" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>From</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="backtestTo" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>To</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-            )}
             <DialogFooter>
               <Button type="submit">Save</Button>
             </DialogFooter>

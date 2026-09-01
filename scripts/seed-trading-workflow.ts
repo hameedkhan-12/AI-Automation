@@ -38,9 +38,6 @@ async function main() {
         symbol: "AAPL",
         exchange: "alpaca",
         interval: "1d",
-        mode: "backtest",
-        backtestFrom,
-        backtestTo,
       },
     },
   });

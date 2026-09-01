@@ -32,9 +32,9 @@ export const MarketDataTriggerNode = memo((props: NodeProps<MarketDataTriggerNod
     );
   };
 
-  const { symbol, exchange, interval, mode } = props.data;
+  const { symbol, exchange, interval } = props.data;
   const description = symbol
-    ? `${exchange?.toUpperCase()} · ${symbol} · ${interval} · ${mode ?? "live"}`
+    ? `${exchange?.toUpperCase()} · ${symbol} · ${interval}`
     : "Not configured";
 
   return (

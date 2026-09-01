@@ -2,15 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateInternalAuth } from "@/lib/internal-auth";
 
-/**
- * GET /api/internal/active-subscriptions
- *
- * Internal endpoint called by the market-listener process on startup
- * to reconcile and restore active market subscriptions from database persistence.
- *
- * Auth: Requires valid shared secret via `Authorization: Bearer <INTERNAL_API_SECRET>`
- *       or `X-Internal-Secret: <INTERNAL_API_SECRET>`.
- */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const authHeader = req.headers.get("authorization");
   const customSecretHeader = req.headers.get("x-internal-secret");

@@ -82,18 +82,24 @@ export const tradingRouter = createTRPCRouter({
   }),
 
   positions: createTRPCRouter({
-    list: protectedProcedure.query(({ ctx }) => {
-      return prisma.paperPosition.findMany({
-        where: { userId: ctx.auth.user.id },
-        orderBy: { updatedAt: "desc" },
-      });
-    }),
+    list: protectedProcedure
+      .input(z.object({ symbol: z.string().optional() }).optional())
+      .query(({ input, ctx }) => {
+        return prisma.paperPosition.findMany({
+          where: {
+            userId: ctx.auth.user.id,
+            ...(input?.symbol ? { symbol: input.symbol.toUpperCase() } : {}),
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+      }),
   }),
 
   orders: createTRPCRouter({
     list: protectedProcedure
       .input(
         z.object({
+          symbol: z.string().optional(),
           page: z.number().default(PAGINATION.DEFAULT_PAGE),
           pageSize: z
             .number()
@@ -103,16 +109,20 @@ export const tradingRouter = createTRPCRouter({
         }),
       )
       .query(async ({ input, ctx }) => {
-        const { page, pageSize } = input;
+        const { page, pageSize, symbol } = input;
+        const where = {
+          userId: ctx.auth.user.id,
+          ...(symbol ? { symbol: symbol.toUpperCase() } : {}),
+        };
 
         const [items, totalCount] = await Promise.all([
           prisma.paperOrder.findMany({
             skip: (page - 1) * pageSize,
             take: pageSize,
-            where: { userId: ctx.auth.user.id },
+            where,
             orderBy: { createdAt: "desc" },
           }),
-          prisma.paperOrder.count({ where: { userId: ctx.auth.user.id } }),
+          prisma.paperOrder.count({ where }),
         ]);
 
         return {
@@ -124,6 +134,225 @@ export const tradingRouter = createTRPCRouter({
           hasNextPage: page < Math.ceil(totalCount / pageSize),
           hasPreviousPage: page > 1,
         };
+      }),
+  }),
+
+  candles: createTRPCRouter({
+    /** Get historical candles for a symbol */
+    get: protectedProcedure
+      .input(
+        z.object({
+          symbol: z.string(),
+          exchange: z.string().default("alpaca"),
+          interval: z.string().default("1d"),
+          from: z.string().optional(),
+          to: z.string().optional(),
+        }),
+      )
+      .query(async ({ input }) => {
+        const { symbol, exchange, interval, from, to } = input;
+        const candles = await prisma.historicalCandle.findMany({
+          where: {
+            exchange,
+            symbol: symbol.toUpperCase(),
+            interval,
+            ...(from || to
+              ? {
+                  timestamp: {
+                    ...(from ? { gte: new Date(from) } : {}),
+                    ...(to ? { lte: new Date(to) } : {}),
+                  },
+                }
+              : {}),
+          },
+          orderBy: { timestamp: "asc" },
+          take: 10000,
+        });
+
+        return candles.map((c) => ({
+          time: Math.floor(c.timestamp.getTime() / 1000),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+        }));
+      }),
+
+    /** Get computed indicators (like SMA) for a symbol */
+    indicators: protectedProcedure
+      .input(
+        z.object({
+          symbol: z.string(),
+          exchange: z.string().default("alpaca"),
+          interval: z.string().default("1d"),
+          periods: z.array(z.number()).default([10, 30]),
+        }),
+      )
+      .query(async ({ input }) => {
+        const { symbol, exchange, interval, periods } = input;
+        const candles = await prisma.historicalCandle.findMany({
+          where: {
+            exchange,
+            symbol: symbol.toUpperCase(),
+            interval,
+          },
+          orderBy: { timestamp: "asc" },
+          take: 10000,
+        });
+
+        // technicalindicators uses CommonJS default export
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const ti = require("technicalindicators");
+        const formattedCandles = candles.map((c) => ({
+          time: Math.floor(c.timestamp.getTime() / 1000),
+          close: c.close,
+        }));
+
+        const colors = ["#38BDF8", "#F59E0B", "#A855F7", "#EC4899"];
+
+        return periods.map((period, i) => {
+          if (formattedCandles.length < period) {
+            return {
+              name: `SMA (${period})`,
+              color: colors[i % colors.length],
+              data: [],
+            };
+          }
+
+          const values: number[] = ti.SMA.calculate({
+            period,
+            values: formattedCandles.map((c) => c.close),
+          });
+
+          const data = values.map((value: number, idx: number) => ({
+            time: formattedCandles[period - 1 + idx].time,
+            value,
+          }));
+
+          return {
+            name: `SMA (${period})`,
+            color: colors[i % colors.length],
+            data,
+          };
+        });
+      }),
+
+    /**
+     * Resolve SMA indicator periods from the workflow that trades this symbol,
+     * then compute and return overlay series data.
+     *
+     * Workflow resolution rule:
+     *   1. Find all Node rows with type MARKET_DATA_TRIGGER whose data.symbol
+     *      matches (case-insensitive).
+     *   2. If multiple workflows match, pick the one whose most recent Execution
+     *      has the latest startedAt.
+     *   3. In that workflow, collect all Indicator nodes with type === "SMA"
+     *      and read their period values.
+     *   4. If 0 SMA nodes are found, return an empty array (no overlay).
+     */
+    symbolIndicators: protectedProcedure
+      .input(
+        z.object({
+          symbol: z.string(),
+          exchange: z.string().default("alpaca"),
+          interval: z.string().default("1d"),
+        }),
+      )
+      .query(async ({ input }) => {
+        const { symbol, exchange, interval } = input;
+        const upperSymbol = symbol.toUpperCase();
+
+        // 1. Find all MARKET_DATA_TRIGGER nodes whose data.symbol matches
+        const triggerNodes = await prisma.node.findMany({
+          where: { type: "MARKET_DATA_TRIGGER" as any },
+          select: { workflowId: true, data: true },
+        });
+
+        const matchingWorkflowIds = triggerNodes
+          .filter((n) => {
+            const data = n.data as Record<string, unknown>;
+            return (
+              typeof data.symbol === "string" &&
+              data.symbol.toUpperCase() === upperSymbol
+            );
+          })
+          .map((n) => n.workflowId);
+
+        if (matchingWorkflowIds.length === 0) return [];
+
+        // 2. Pick the workflow with the most recent execution
+        let resolvedWorkflowId = matchingWorkflowIds[0];
+
+        if (matchingWorkflowIds.length > 1) {
+          const latestExecutions = await prisma.execution.findMany({
+            where: { workflowId: { in: matchingWorkflowIds } },
+            orderBy: { startedAt: "desc" },
+            take: 1,
+            select: { workflowId: true },
+          });
+          if (latestExecutions.length > 0) {
+            resolvedWorkflowId = latestExecutions[0].workflowId;
+          }
+        }
+
+        // 3. Find SMA indicator nodes in the resolved workflow
+        const indicatorNodes = await prisma.node.findMany({
+          where: {
+            workflowId: resolvedWorkflowId,
+            type: "INDICATOR" as any,
+          },
+          select: { data: true },
+        });
+
+        const smaPeriods: number[] = indicatorNodes
+          .map((n) => n.data as Record<string, unknown>)
+          .filter((d) => d.type === "SMA" && typeof d.period === "number")
+          .map((d) => d.period as number)
+          .sort((a, b) => a - b); // ascending: fast first, slow second
+
+        // 4. No SMA nodes → return empty (caller renders no overlay)
+        if (smaPeriods.length === 0) return [];
+
+        // 5. Fetch candles and compute SMA series for the resolved periods
+        const candles = await prisma.historicalCandle.findMany({
+          where: { exchange, symbol: upperSymbol, interval },
+          orderBy: { timestamp: "asc" },
+          take: 10000,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const ti = require("technicalindicators");
+        const formattedCandles = candles.map((c) => ({
+          time: Math.floor(c.timestamp.getTime() / 1000),
+          close: c.close,
+        }));
+
+        const colors = ["#38BDF8", "#F59E0B", "#A855F7", "#EC4899"];
+
+        return smaPeriods.map((period, i) => {
+          if (formattedCandles.length < period) {
+            return {
+              name: `SMA (${period})`,
+              color: colors[i % colors.length],
+              data: [] as { time: number; value: number }[],
+            };
+          }
+
+          const values: number[] = ti.SMA.calculate({
+            period,
+            values: formattedCandles.map((c) => c.close),
+          });
+
+          return {
+            name: `SMA (${period})`,
+            color: colors[i % colors.length],
+            data: values.map((value: number, idx: number) => ({
+              time: formattedCandles[period - 1 + idx].time,
+              value,
+            })),
+          };
+        });
       }),
   }),
 

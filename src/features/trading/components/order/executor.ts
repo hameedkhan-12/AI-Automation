@@ -132,11 +132,13 @@ export const orderExecutor: NodeExecutor<OrderData> = async ({
           quantity: data.quantity!,
           filledPrice: orderResult.filledPrice,
           status: orderResult.status,
+          isSimulated: shouldSimulate,
           clientOrderId,
         },
         update: {
           filledPrice: orderResult.filledPrice,
           status: orderResult.status,
+          isSimulated: shouldSimulate,
         },
       });
 

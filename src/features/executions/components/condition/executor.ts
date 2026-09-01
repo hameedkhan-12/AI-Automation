@@ -53,11 +53,15 @@ export const conditionExecutor: NodeExecutor<ConditionData> = async ({
   const left = typeof leftRaw === "number" ? leftRaw : Number(leftRaw);
   const right = typeof rightRaw === "number" ? rightRaw : Number(rightRaw);
 
-  // Insufficient data upstream (e.g. indicator hasn't seen enough candles)
+  // Insufficient data upstream or missing variable in context
   if (Number.isNaN(left) || Number.isNaN(right)) {
     await publish(conditionChannel().status({ nodeId, status: "skipped" }));
+    const missingDesc = Number.isNaN(left)
+      ? `"${data.leftPath}" (${leftRaw === undefined ? "variable not found in workflow context" : "still warming up"})`
+      : `"${data.rightPath ?? data.rightValue}" (${rightRaw === undefined ? "variable not found in workflow context" : "still warming up"})`;
+
     throw new ConditionNotMetError(
-      `Condition: cannot evaluate — "${data.leftPath}" or right-hand value is not a number yet (still warming up)`,
+      `Condition: cannot evaluate — ${missingDesc} is not a valid number`,
     );
   }
 

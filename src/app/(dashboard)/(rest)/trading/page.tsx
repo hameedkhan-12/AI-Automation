@@ -76,8 +76,15 @@ export default async function TradingPage() {
               </thead>
               <tbody>
                 {positions.slice(0, 5).map((pos) => (
-                  <tr key={pos.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium">{pos.symbol}</td>
+                  <tr key={pos.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 font-medium">
+                      <Link
+                        href={`/trading/${pos.symbol}`}
+                        className="text-[#00E5A0] hover:underline font-semibold"
+                      >
+                        {pos.symbol}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-right font-mono">{pos.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono text-[#00E5A0]">
                       ${pos.avgPrice.toFixed(2)}
@@ -108,13 +115,21 @@ export default async function TradingPage() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Side</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground font-mono">Qty</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground font-mono">Fill Price</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Fill Type</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.items.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium">{order.symbol}</td>
+                  <tr key={order.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 font-medium">
+                      <Link
+                        href={`/trading/${order.symbol}`}
+                        className="text-foreground hover:text-[#00E5A0] hover:underline font-semibold"
+                      >
+                        {order.symbol}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`font-medium ${order.side === "BUY" ? "text-[#00E5A0]" : "text-red-400"}`}>
                         {order.side}
@@ -123,6 +138,17 @@ export default async function TradingPage() {
                     <td className="px-4 py-3 text-right font-mono">{order.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono">
                       {order.filledPrice ? `$${order.filledPrice.toFixed(2)}` : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded font-mono ${
+                          order.isSimulated
+                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                            : "bg-[#00E5A0]/10 text-[#00E5A0] border border-[#00E5A0]/20"
+                        }`}
+                      >
+                        {order.isSimulated ? "Simulated" : "Broker"}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${

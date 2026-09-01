@@ -281,6 +281,7 @@ model PaperOrder {
   quantity    Float
   filledPrice Float?
   status      String   // "FILLED" | "PENDING" | "REJECTED"
+  isSimulated Boolean  @default(true)
   clientOrderId String? @unique
   createdAt   DateTime @default(now())
 }

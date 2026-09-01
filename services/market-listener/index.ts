@@ -3,16 +3,22 @@ import http from "http";
 import crypto from "crypto";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const ALPACA_WS_URL = "wss://stream.data.alpaca.markets/v2/iex";
+const ALPACA_WS_URL =
+  process.env.ALPACA_DATA_WS_URL ?? "wss://stream.data.alpaca.markets/v2/iex";
+const ALPACA_API_KEY = process.env.ALPACA_API_KEY?.trim();
+const ALPACA_API_SECRET = process.env.ALPACA_API_SECRET?.trim();
 const CONTROL_PORT = Number(process.env.LISTENER_CONTROL_PORT ?? 3001);
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 const FORWARD_TIMEOUT_MS = 10_000; // 10 s — prevents a slow app from blocking tick processing
+const AUTH_FAIL_CODES = new Set([402, 404, 409]); // do not retry: bad creds / timeout / feed not allowed
 
 // symbol -> Set of workflowIds
 const subscriptions = new Map<string, Set<string>>();
 
 let ws: WebSocket | null = null;
 let authenticated = false;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let shouldReconnect = true;
 
 // ─── Timing-safe Auth Validation ──────────────────────────────────────────────
 
@@ -106,26 +112,68 @@ async function forwardTick(symbol: string, candle: Record<string, unknown>): Pro
 
 // ─── Alpaca WebSocket connection ──────────────────────────────────────────────
 
+function scheduleReconnect(): void {
+  if (!shouldReconnect) return;
+  if (reconnectTimer) return;
+  console.warn("[listener] WebSocket closed — reconnecting in 5s...");
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectAlpaca();
+  }, 5000);
+}
+
 function connectAlpaca(): void {
+  if (!ALPACA_API_KEY || !ALPACA_API_SECRET) {
+    console.error(
+      "[listener] ALPACA_API_KEY / ALPACA_API_SECRET are missing after loading env. Refusing to connect.",
+    );
+    shouldReconnect = false;
+    return;
+  }
+
   ws = new WebSocket(ALPACA_WS_URL);
 
   ws.on("open", () => {
-    console.log("[listener] WebSocket connected to Alpaca");
-    ws!.send(JSON.stringify({
-      action: "auth",
-      key: process.env.ALPACA_API_KEY,
-      secret: process.env.ALPACA_API_SECRET,
-    }));
+    console.log(`[listener] WebSocket connected to ${ALPACA_WS_URL}`);
+    ws!.send(
+      JSON.stringify({
+        action: "auth",
+        key: ALPACA_API_KEY,
+        secret: ALPACA_API_SECRET,
+      }),
+    );
   });
 
   ws.on("message", async (raw: Buffer) => {
-    const messages = JSON.parse(raw.toString()) as Array<Record<string, unknown>>;
+    let messages: Array<Record<string, unknown>>;
+    try {
+      messages = JSON.parse(raw.toString()) as Array<Record<string, unknown>>;
+    } catch {
+      console.error("[listener] Non-JSON Alpaca payload:", raw.toString());
+      return;
+    }
 
     for (const msg of messages) {
+      if (msg.T === "error") {
+        const code = Number(msg.code);
+        console.error(`[listener] Alpaca error ${code}: ${msg.msg}`);
+        if (code === 406) {
+          console.error(
+            "[listener] Connection limit exceeded — only one market-data WebSocket per Alpaca account. Stop other listeners (npm run dev:all, Docker, another terminal) and retry.",
+          );
+        }
+        if (AUTH_FAIL_CODES.has(code)) {
+          shouldReconnect = false;
+        }
+        continue;
+      }
+
+      if (msg.T === "success") {
+        console.log(`[listener] Alpaca: ${msg.msg}`);
+      }
+
       if (msg.T === "success" && msg.msg === "authenticated" && !authenticated) {
         authenticated = true;
-        console.log("[listener] Authenticated with Alpaca");
-        // Subscribe to all currently tracked symbols
         const symbols = [...subscriptions.keys()];
         if (symbols.length > 0) {
           ws!.send(JSON.stringify({ action: "subscribe", bars: symbols }));
@@ -133,7 +181,6 @@ function connectAlpaca(): void {
       }
 
       if (msg.T === "b") {
-        // Bar message — forward to app
         const symbol = msg.S as string;
         const candle = {
           timestamp: new Date(msg.t as string).getTime(),
@@ -153,10 +200,11 @@ function connectAlpaca(): void {
     console.error("[listener] WebSocket error:", err.message);
   });
 
-  ws.on("close", () => {
+  ws.on("close", (code, reason) => {
     authenticated = false;
-    console.warn("[listener] WebSocket closed — reconnecting in 5s...");
-    setTimeout(connectAlpaca, 5000);
+    const reasonText = reason?.toString() || "no reason";
+    console.warn(`[listener] WebSocket closed (${code}: ${reasonText})`);
+    scheduleReconnect();
   });
 }
 
