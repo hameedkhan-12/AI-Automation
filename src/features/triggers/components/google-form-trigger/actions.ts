@@ -16,4 +16,8 @@ export async function fetchGoogleFormTriggerRealtimeToken(): Promise<GoogleFormT
   });
 
   return token;
-};
+}
+
+export async function getGoogleFormWebhookSecret(): Promise<string> {
+  return process.env.GOOGLE_FORM_WEBHOOK_SECRET || process.env.INTERNAL_API_SECRET || "";
+}

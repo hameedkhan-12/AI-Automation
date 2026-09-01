@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,23 +15,33 @@ import { CopyIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { generateGoogleFormScript } from "./utils";
+import { getGoogleFormWebhookSecret } from "./actions";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-};
+}
 
 export const GoogleFormTriggerDialog = ({
   open,
-  onOpenChange
+  onOpenChange,
 }: Props) => {
   const params = useParams();
   const workflowId = params.workflowId as string;
+  const [secret, setSecret] = useState<string>("");
 
-  // Construct the webhook URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-  const webhookUrl = 
-    `${baseUrl}/api/webhooks/google-form?workflowId=${workflowId}`;
+  useEffect(() => {
+    if (open) {
+      getGoogleFormWebhookSecret()
+        .then((s) => setSecret(s))
+        .catch((err) => console.error("Failed to fetch webhook secret:", err));
+    }
+  }, [open]);
+
+  // Construct the webhook URL with authentication secret
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const secretParam = secret ? `&secret=${encodeURIComponent(secret)}` : "";
+  const webhookUrl = `${baseUrl}/api/webhooks/google-form?workflowId=${workflowId}${secretParam}`;
 
   const copyToClipboard = async () => {
     try {
@@ -72,6 +83,9 @@ export const GoogleFormTriggerDialog = ({
                 <CopyIcon className="size-4" />
               </Button>
             </div>
+            <p className="text-xs text-amber-500/90 font-medium">
+              Note: This URL contains your authentication secret. Treat it as sensitive and do not share it publicly.
+            </p>
           </div>
 
           <div className="rounded-lg bg-muted p-4 space-y-2">
@@ -79,8 +93,7 @@ export const GoogleFormTriggerDialog = ({
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
               <li>Open your Google Form</li>
               <li>Click the three dots menu → Script editor</li>
-              <li>Copy and paste the script below</li>
-              <li>Replace WEBHOOK_URL with your webhook URL above</li>
+              <li>Copy and paste the script below (it automatically embeds your authenticated Webhook URL)</li>
               <li>Save and click "Triggers" → Add Trigger</li>
               <li>Choose: From form → On form submit → Save</li>
             </ol>
@@ -105,7 +118,7 @@ export const GoogleFormTriggerDialog = ({
               Copy Google Apps Script
             </Button>
             <p className="text-xs text-muted-foreground">
-              This script includes your webhook URL and handles form submissions
+              This script includes your authenticated webhook URL and handles form submissions
             </p>
           </div>
 

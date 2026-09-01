@@ -39,6 +39,40 @@ function extractSecret(req: http.IncomingMessage): string | null {
   return null;
 }
 
+// ─── Startup Reconciliation ──────────────────────────────────────────────────
+
+async function reconcileSubscriptions(): Promise<void> {
+  try {
+    const headers: Record<string, string> = {};
+    if (INTERNAL_API_SECRET) {
+      headers["Authorization"] = `Bearer ${INTERNAL_API_SECRET}`;
+    }
+
+    const res = await fetch(`${APP_URL}/api/internal/active-subscriptions`, { headers });
+    if (!res.ok) {
+      console.warn(`[listener] Failed to fetch active subscriptions (${res.status}): ${await res.text()}`);
+      return;
+    }
+
+    const data = (await res.json()) as {
+      subscriptions?: Array<{ symbol: string; workflowId: string }>;
+    };
+
+    if (data.subscriptions && Array.isArray(data.subscriptions)) {
+      for (const sub of data.subscriptions) {
+        if (sub.symbol && sub.workflowId) {
+          addSubscription(sub.symbol, sub.workflowId);
+        }
+      }
+      console.log(
+        `[listener] Reconciled ${data.subscriptions.length} subscription(s) across ${subscriptions.size} symbol(s) on startup`,
+      );
+    }
+  } catch (err) {
+    console.error("[listener] Error reconciling active subscriptions on startup:", err);
+  }
+}
+
 // ─── Forward tick to Next.js ──────────────────────────────────────────────────
 
 async function forwardTick(symbol: string, candle: Record<string, unknown>): Promise<void> {
@@ -212,8 +246,15 @@ const controlServer = http.createServer((req, res) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-controlServer.listen(CONTROL_PORT, () => {
-  console.log(`[listener] Control API listening on :${CONTROL_PORT}`);
-});
+async function start(): Promise<void> {
+  controlServer.listen(CONTROL_PORT, () => {
+    console.log(`[listener] Control API listening on :${CONTROL_PORT}`);
+  });
 
-connectAlpaca();
+  await reconcileSubscriptions();
+  connectAlpaca();
+}
+
+start().catch((err) => {
+  console.error("[listener] Fatal initialization error:", err);
+});

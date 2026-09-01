@@ -31,6 +31,10 @@ const envSchema = z.object({
   ALPACA_BASE_URL: optionalString,
   // Internal service-to-service communication (Next.js <-> Market Listener)
   INTERNAL_API_SECRET: optionalString,
+  // ─── Webhooks ─────────────────────────────────────────────────────────────
+  STRIPE_SECRET_KEY: optionalString,
+  STRIPE_WEBHOOK_SECRET: optionalString,
+  GOOGLE_FORM_WEBHOOK_SECRET: optionalString,
 });
 
 export const env = envSchema.parse(process.env);

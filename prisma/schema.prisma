@@ -1,4 +1,4 @@
-// prisma/schema.prisma (complete file — replace yours entirely)
+// Flux Prisma Schema Configuration
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -198,7 +198,7 @@ model Execution {
   nodeLogs NodeExecutionLog[]
 }
 
-// Per-node execution record — what shadow-replay diffs against. Without
+// Per-node execution record — what shadow-replay diffs against to detect intermediate step changes.
 model NodeExecutionLog {
   id          String    @id @default(cuid())
   executionId String
@@ -298,5 +298,14 @@ model HistoricalCandle {
   volume    Float
 
   @@unique([exchange, symbol, interval, timestamp])
+}
+
+model ActiveMarketSubscription {
+  id         String   @id @default(cuid())
+  workflowId String
+  symbol     String
+  createdAt  DateTime @default(now())
+
+  @@unique([workflowId, symbol])
 }
 

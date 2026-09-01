@@ -617,6 +617,17 @@ Service-to-service communication between the Next.js API (`/api/internal/market-
   2. **AWS EC2** market-listener environment / `.env` (`INTERNAL_API_SECRET`)
 * All requests in both directions are validated using timing-safe comparisons (`crypto.timingSafeEqual` over SHA-256 digests) to prevent timing attacks.
 
+### Inbound Webhook Security
+
+Flux verifies all inbound webhooks to prevent spoofed executions:
+
+* **Stripe Webhooks** (`/api/webhooks/stripe?workflowId=...`):
+  * Verified cryptographically via `stripe.webhooks.constructEvent()` against raw request body bytes and the `stripe-signature` header.
+  * **Required Env Vars**: `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` (from your Stripe Dashboard → Developers → Webhooks).
+* **Google Form Webhooks** (`/api/webhooks/google-form?workflowId=...&secret=...`):
+  * Verified using a timing-safe shared secret check against `GOOGLE_FORM_WEBHOOK_SECRET` (or fallback `INTERNAL_API_SECRET`).
+  * **Important**: The generated Apps Script embedded from the Google Form Trigger dialog includes this secret parameter. If you change your secret or upgrade from an earlier version, you must re-copy the updated script/URL from the trigger dialog into your Google Form's script editor.
+
 ---
 
 # 🚀 Getting Started

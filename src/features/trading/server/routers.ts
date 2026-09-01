@@ -132,11 +132,37 @@ export const tradingRouter = createTRPCRouter({
     start: protectedProcedure
       .input(z.object({ symbol: z.string(), workflowId: z.string() }))
       .mutation(async ({ input }) => {
-        await fetch(`${LISTENER_URL}/subscribe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
+        // 1. Persist subscription in DB before calling listener (durable source of truth)
+        await prisma.activeMarketSubscription.upsert({
+          where: {
+            workflowId_symbol: {
+              workflowId: input.workflowId,
+              symbol: input.symbol,
+            },
+          },
+          create: {
+            workflowId: input.workflowId,
+            symbol: input.symbol,
+          },
+          update: {},
         });
+
+        // 2. Notify running market listener process with auth header
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (process.env.INTERNAL_API_SECRET) {
+          headers["Authorization"] = `Bearer ${process.env.INTERNAL_API_SECRET}`;
+        }
+
+        try {
+          await fetch(`${LISTENER_URL}/subscribe`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(input),
+          });
+        } catch (err) {
+          console.warn("[listener.start] Failed to notify live listener (persisted in DB for next reconciliation):", err);
+        }
+
         return { ok: true };
       }),
 
@@ -144,11 +170,30 @@ export const tradingRouter = createTRPCRouter({
     stop: protectedProcedure
       .input(z.object({ symbol: z.string(), workflowId: z.string() }))
       .mutation(async ({ input }) => {
-        await fetch(`${LISTENER_URL}/unsubscribe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
+        // 1. Remove subscription from DB
+        await prisma.activeMarketSubscription.deleteMany({
+          where: {
+            workflowId: input.workflowId,
+            symbol: input.symbol,
+          },
         });
+
+        // 2. Notify running market listener process with auth header
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (process.env.INTERNAL_API_SECRET) {
+          headers["Authorization"] = `Bearer ${process.env.INTERNAL_API_SECRET}`;
+        }
+
+        try {
+          await fetch(`${LISTENER_URL}/unsubscribe`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(input),
+          });
+        } catch (err) {
+          console.warn("[listener.stop] Failed to notify live listener:", err);
+        }
+
         return { ok: true };
       }),
   }),
