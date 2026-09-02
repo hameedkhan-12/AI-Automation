@@ -1,6 +1,9 @@
 import { caller } from "@/trpc/server";
 import Link from "next/link";
 import { TrendingUpIcon, BarChart3Icon, ArrowUpDownIcon } from "lucide-react";
+import { requireAuth } from "@/lib/auth-utils";
+import { formatUsd } from "@/features/trading/lib/format-money";
+import { TradingLoadError } from "@/features/trading/components/trading-load-error";
 
 export const metadata = {
   title: "Trading | Flux",
@@ -8,11 +11,24 @@ export const metadata = {
 };
 
 export default async function TradingPage() {
-  const [exchanges, positions, orders] = await Promise.all([
-    caller.trading.exchanges.list(),
-    caller.trading.positions.list(),
-    caller.trading.orders.list({ page: 1, pageSize: 5 }),
-  ]);
+  await requireAuth();
+
+  let exchanges: string[];
+  let positions: Awaited<ReturnType<typeof caller.trading.positions.list>>;
+  let orders: Awaited<ReturnType<typeof caller.trading.orders.list>>;
+
+  try {
+    [exchanges, positions, orders] = await Promise.all([
+      caller.trading.exchanges.list(),
+      caller.trading.positions.list(),
+      caller.trading.orders.list({ page: 1, pageSize: 5 }),
+    ]);
+  } catch (error) {
+    console.error("[trading] Failed to load overview:", error);
+    const detail =
+      error instanceof Error ? error.message : "Unknown trading query error";
+    return <TradingLoadError detail={detail} />;
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -87,7 +103,7 @@ export default async function TradingPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-mono">{pos.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono text-[#00E5A0]">
-                      ${pos.avgPrice.toFixed(2)}
+                      {formatUsd(pos.avgPrice)}
                     </td>
                   </tr>
                 ))}
@@ -137,7 +153,7 @@ export default async function TradingPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-mono">{order.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono">
-                      {order.filledPrice ? `$${order.filledPrice.toFixed(2)}` : "—"}
+                      {formatUsd(order.filledPrice)}
                     </td>
                     <td className="px-4 py-3">
                       <span

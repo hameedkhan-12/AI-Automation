@@ -84,14 +84,19 @@ export const tradingRouter = createTRPCRouter({
   positions: createTRPCRouter({
     list: protectedProcedure
       .input(z.object({ symbol: z.string().optional() }).optional())
-      .query(({ input, ctx }) => {
-        return prisma.paperPosition.findMany({
+      .query(async ({ input, ctx }) => {
+        const rows = await prisma.paperPosition.findMany({
           where: {
             userId: ctx.auth.user.id,
             ...(input?.symbol ? { symbol: input.symbol.toUpperCase() } : {}),
           },
           orderBy: { updatedAt: "desc" },
         });
+        return rows.map((row) => ({
+          ...row,
+          quantity: Number(row.quantity),
+          avgPrice: Number(row.avgPrice),
+        }));
       }),
   }),
 
@@ -126,7 +131,12 @@ export const tradingRouter = createTRPCRouter({
         ]);
 
         return {
-          items,
+          items: items.map((row) => ({
+            ...row,
+            quantity: Number(row.quantity),
+            filledPrice:
+              row.filledPrice === null ? null : Number(row.filledPrice),
+          })),
           page,
           pageSize,
           totalCount,

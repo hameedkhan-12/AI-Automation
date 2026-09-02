@@ -1,6 +1,9 @@
 import { caller } from "@/trpc/server";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
+import { requireAuth } from "@/lib/auth-utils";
+import { formatUsd } from "@/features/trading/lib/format-money";
+import { TradingLoadError } from "@/features/trading/components/trading-load-error";
 
 export const metadata = {
   title: "Paper Positions | Flux",
@@ -8,7 +11,17 @@ export const metadata = {
 };
 
 export default async function PositionsPage() {
-  const positions = await caller.trading.positions.list();
+  await requireAuth();
+
+  let positions: Awaited<ReturnType<typeof caller.trading.positions.list>>;
+  try {
+    positions = await caller.trading.positions.list();
+  } catch (error) {
+    console.error("[trading] Failed to load positions:", error);
+    const detail =
+      error instanceof Error ? error.message : "Unknown trading query error";
+    return <TradingLoadError detail={detail} />;
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -63,10 +76,10 @@ export default async function PositionsPage() {
                       {pos.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-[#00E5A0]">
-                      ${pos.avgPrice.toFixed(2)}
+                      {formatUsd(pos.avgPrice)}
                     </td>
                     <td className="px-5 py-4 text-right font-mono font-medium">
-                      ${estValue.toFixed(2)}
+                      {formatUsd(estValue)}
                     </td>
                     <td className="px-5 py-4 text-right text-xs text-muted-foreground">
                       {new Date(pos.updatedAt).toLocaleString()}
