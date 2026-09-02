@@ -107,6 +107,13 @@ export const executeWorkflow = inngest.createFunction(
       /* Redis miss — fall through */
     }
 
+    // Cache hit/miss counters — cheap, non-blocking, and the source of truth
+    // for the "% of workflow lookups served from cache" metric (see
+    // scripts/analyze-performance.ts). Daily buckets keep the counters from
+    // growing unbounded and let us look at trend over time if needed.
+    const CACHE_METRIC_DAY = new Date().toISOString().slice(0, 10);
+    redis.incr(`metrics:workflow-cache:${CACHE_METRIC_DAY}:${workflow ? "hit" : "miss"}`).catch(() => {});
+
     if (!workflow) {
       workflow = await prisma.workflow.findUniqueOrThrow({
         where: { id: workflowId },

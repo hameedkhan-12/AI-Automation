@@ -20,6 +20,41 @@ let authenticated = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldReconnect = true;
 
+// ─── Tick-to-trigger latency tracking ─────────────────────────────────────
+
+const tickLatenciesMs: number[] = [];
+const METRICS_LOG_INTERVAL_MS = 60_000; // 1 minute
+const MAX_SAMPLES = 5000; // cap memory use on a long-running process
+
+function recordTickLatency(ms: number) {
+  tickLatenciesMs.push(ms);
+  if (tickLatenciesMs.length > MAX_SAMPLES) {
+    tickLatenciesMs.shift();
+  }
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[Math.min(Math.max(idx, 0), sorted.length - 1)];
+}
+
+function logTickLatencySummary() {
+  if (tickLatenciesMs.length === 0) return;
+  const sorted = [...tickLatenciesMs].sort((a, b) => a - b);
+  const p50 = Math.round(percentile(sorted, 50));
+  const p95 = Math.round(percentile(sorted, 95));
+  const max = sorted[sorted.length - 1];
+  console.log(
+    `[listener] Tick-to-trigger latency (last ${sorted.length} ticks): p50=${p50}ms p95=${p95}ms max=${max}ms`,
+  );
+  // Reset the window after each report so the next summary reflects only
+  // fresh activity rather than an ever-growing lifetime average.
+  tickLatenciesMs.length = 0;
+}
+
+setInterval(logTickLatencySummary, METRICS_LOG_INTERVAL_MS);
+
 // ─── Timing-safe Auth Validation ──────────────────────────────────────────────
 
 function timingSafeCompare(a?: string | null, b?: string | null): boolean {
@@ -81,7 +116,11 @@ async function reconcileSubscriptions(): Promise<void> {
 
 // ─── Forward tick to Next.js ──────────────────────────────────────────────────
 
-async function forwardTick(symbol: string, candle: Record<string, unknown>): Promise<void> {
+async function forwardTick(
+  symbol: string,
+  candle: Record<string, unknown>,
+  receivedAtMs: number,
+): Promise<void> {
   const workflowIds = subscriptions.get(symbol);
   if (!workflowIds || workflowIds.size === 0) return;
 
@@ -102,6 +141,9 @@ async function forwardTick(symbol: string, candle: Record<string, unknown>): Pro
         body: JSON.stringify({ symbol, candle, workflowId }),
         signal: controller.signal,
       });
+      // Tick-to-trigger latency: time from receiving the bar off the Alpaca
+      // socket to successfully handing it off to the workflow engine.
+      recordTickLatency(Date.now() - receivedAtMs);
     } catch (err) {
       console.error(`[listener] Failed to forward tick for ${workflowId}:`, err);
     } finally {
@@ -181,6 +223,7 @@ function connectAlpaca(): void {
       }
 
       if (msg.T === "b") {
+        const receivedAtMs = Date.now();
         const symbol = msg.S as string;
         const candle = {
           timestamp: new Date(msg.t as string).getTime(),
@@ -190,7 +233,7 @@ function connectAlpaca(): void {
           close: msg.c,
           volume: msg.v,
         };
-        await forwardTick(symbol, candle);
+        await forwardTick(symbol, candle, receivedAtMs);
         console.log(`[listener] Tick forwarded: ${symbol} @ ${candle.close}`);
       }
     }

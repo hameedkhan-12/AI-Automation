@@ -213,6 +213,8 @@ model NodeExecutionLog {
 
   @@unique([executionId, nodeId])
   @@index([executionId])
+  @@index([nodeType])
+  @@index([createdAt])
 }
 
 // A single "test my draft graph edits against real history" run.
