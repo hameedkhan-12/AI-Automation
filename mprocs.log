@@ -13,3 +13,10 @@ ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run
 ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run inngest:dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
 ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
 ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npx dotenv-cli -- npx tsx services/market-listener/index.ts\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run ngrok:dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run inngest:dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npx dotenv-cli -- npx tsx services/market-listener/index.ts\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run ngrok:dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [portable_pty::win::psuedocon] CreateProcessW `"C:\\nvm4w\\nodejs\\npm run ngrok:dev\0"` in cwd `Some("C:\\Users\\Hp\\Desktop\\flux\0")` failed: %1 is not a valid Win32 application. (os error 193)
+ERROR [mprocs::error] Error: channel closed

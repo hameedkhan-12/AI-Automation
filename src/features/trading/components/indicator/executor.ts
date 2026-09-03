@@ -19,17 +19,10 @@ type IndicatorData = {
 
 const SYNC_EVERY = 50;
 const MAX_BUFFER = 500;
-
-// Include interval in the cache key so that switching from 1d → 1m doesn't
-// silently reuse a buffer of daily prices for per-minute computations, which
-// would produce a meaningless mixed-timescale SMA.
 function getRedisKey(nodeId: string, interval: string) {
   return `indicator:${nodeId}:${interval}:prices`;
 }
 
-// Postgres key remains a stable string per node so that the DB record
-// uniqueness constraint (nodeId, key) doesn't need a migration.
-// We store the interval inside the key value to disambiguate on read.
 function getDbKey(interval: string) {
   return `prices:${interval}`;
 }
@@ -117,7 +110,15 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   publish,
   mode = "live",
 }) => {
+  const stageStart = Date.now();
+  const timings: Record<string, number> = {};
+  const mark = (label: string, since: number) => {
+    timings[label] = Date.now() - since;
+  };
+
+  let t = Date.now();
   await publish(indicatorChannel().status({ nodeId, status: "loading" }));
+  mark("publishLoading", t);
 
   if (!data.variableName) {
     await publish(indicatorChannel().status({ nodeId, status: "error" }));
@@ -139,19 +140,14 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
 
   const workflowId = (context.__workflowId as string | undefined) ?? "unknown";
 
-  // Resolve the interval from context (set by market-data-trigger). Fall back
-  // to "1d" only if no trigger node ran before this one, which should not happen
-  // in a properly composed workflow.
   const interval = (context.interval as string | undefined) ?? "1d";
 
   // 1. Read existing price buffer — interval-scoped so that switching the
   //    node from 1d → 1m starts a fresh buffer instead of mixing timescales.
+  t = Date.now();
   let prices = await readPriceBuffer(nodeId, interval);
+  mark("readPriceBuffer", t);
 
-  // 2. Automated Buffer Warm-Up:
-  // If the buffer has fewer prices than required by the period, pre-warm from
-  // the historical candles that the market-data-trigger already fetched (free)
-  // or by calling the adapter directly (fallback, costs one API call).
   if (prices.length < period) {
     if (context.historicalCandles && Array.isArray(context.historicalCandles) && context.historicalCandles.length > 0) {
       const histCloses = (context.historicalCandles as Candle[])
@@ -161,15 +157,6 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
         prices = histCloses;
       }
     } else if (mode !== "shadow" && context.symbol && context.exchange) {
-      // Real network call to the exchange adapter — must never happen
-      // during a shadow replay. A replay is meant to be free and to have
-      // no real external effects; without this guard, a node that needs
-      // re-execution but has a short buffer would silently make a live
-      // API call every time "Test Changes" is clicked. If the buffer is
-      // short during a shadow replay, we deliberately fall through with
-      // whatever history is available — computeIndicator() already
-      // returns null when there isn't enough, which the Condition node
-      // correctly treats as "not met yet," same as it would live.
       try {
         const adapter = getExchangeAdapter(context.exchange as string);
         const now = new Date();
@@ -195,7 +182,9 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
   }
 
   // 3. Compute indicator
+  t = Date.now();
   const value = computeIndicator(data.type!, period, prices);
+  mark("compute", t);
 
   // 4. Persist updated buffer (in background)
   writePriceBuffer(nodeId, interval, prices, workflowId).catch(() => {});
@@ -211,7 +200,12 @@ export const indicatorExecutor: NodeExecutor<IndicatorData> = async ({
 
   const result = { value, type: data.type, period, prices: prices.length, interval };
 
+  t = Date.now();
   await publish(indicatorChannel().status({ nodeId, status: "success" }));
+  mark("publishSuccess", t);
+
+  timings.total = Date.now() - stageStart;
+  console.log(`[indicator] Stage timing (${nodeId}):`, timings);
 
   return {
     ...context,
