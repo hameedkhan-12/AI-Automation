@@ -49,6 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     name: "workflows/execute.workflow",
     data: {
       workflowId,
+      eventCreatedAt: Date.now(),
       initialData: { candle, symbol },
     },
   });

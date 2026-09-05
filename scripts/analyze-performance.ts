@@ -139,6 +139,25 @@ async function cacheHitRate(sinceDays: number) {
   };
 }
 
+// ─── 5. Queue-wait time (producer send → function start) ──────────────────
+// Requires eventCreatedAt to be populated (route.ts / utils.ts set this when
+// sending the event). Executions without it (older data, manual triggers
+// that predate this instrumentation) are excluded, not treated as zero.
+async function queueWaitTime(sinceDays: number) {
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+
+  const executions = await prisma.execution.findMany({
+    where: { startedAt: { gte: since }, eventCreatedAt: { not: null } },
+    select: { startedAt: true, eventCreatedAt: true },
+  });
+
+  const waits = executions.map(
+    (e) => e.startedAt.getTime() - e.eventCreatedAt!.getTime(),
+  );
+
+  return { ...stats(waits), missingTimestamp: waits.length === 0 };
+}
+
 // ─── Report ──────────────────────────────────────────────────────────────
 async function main() {
   const SINCE_DAYS = Number(process.argv[2] ?? 7);
@@ -171,6 +190,19 @@ async function main() {
   console.log(
     `  ${cache.hitRatePct}% hit rate  (${cache.hits} hits / ${cache.misses} misses)`,
   );
+
+  console.log("\n── Queue-wait time (event sent → function started) ────────");
+  const queueWait = await queueWaitTime(SINCE_DAYS);
+  if (queueWait.missingTimestamp) {
+    console.log(
+      "  No executions with eventCreatedAt in this window yet — deploy the",
+    );
+    console.log(
+      "  producer-timestamp change and run a fresh batch to populate this.",
+    );
+  } else {
+    console.table([queueWait]);
+  }
 
   console.log("\nDone.\n");
 }

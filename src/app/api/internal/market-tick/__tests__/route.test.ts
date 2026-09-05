@@ -95,6 +95,7 @@ describe("POST /api/internal/market-tick — Authentication & Flow", () => {
       name: "workflows/execute.workflow",
       data: {
         workflowId: "wf-1",
+        eventCreatedAt: expect.any(Number),
         initialData: { candle, symbol: "AAPL" },
       },
     });
@@ -119,6 +120,7 @@ describe("POST /api/internal/market-tick — Authentication & Flow", () => {
       name: "workflows/execute.workflow",
       data: {
         workflowId: "wf-2",
+        eventCreatedAt: expect.any(Number),
         initialData: { candle, symbol: "TSLA" },
       },
     });

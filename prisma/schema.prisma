@@ -189,6 +189,13 @@ model Execution {
   startedAt DateTime @default(now())
   completedAt DateTime?
 
+  // When the producer (route.ts / utils.ts sendWorkflowExecution) created the
+  // event, captured client-side before it's sent to Inngest. Combined with
+  // startedAt, this gives real queue-wait time: how long the event sat
+  // waiting for a free concurrency slot before this function actually began
+  // running. Nullable because older/manual events may not carry it.
+  eventCreatedAt DateTime?
+
   inngestEventId String @unique
 
   initialData Json?

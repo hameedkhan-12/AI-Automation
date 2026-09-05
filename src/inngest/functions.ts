@@ -112,7 +112,7 @@ export const executeWorkflow = inngest.createFunction(
     // scripts/analyze-performance.ts). Daily buckets keep the counters from
     // growing unbounded and let us look at trend over time if needed.
     const CACHE_METRIC_DAY = new Date().toISOString().slice(0, 10);
-    redis.incr(`metrics:workflow-cache:${CACHE_METRIC_DAY}:${workflow ? "hit" : "miss"}`).catch(() => {});
+    redis.incr(`metrics:workflow-cache:${CACHE_METRIC_DAY}:${workflow ? "hit" : "miss"}`).catch(() => { });
 
     if (!workflow) {
       workflow = await prisma.workflow.findUniqueOrThrow({
@@ -124,7 +124,7 @@ export const executeWorkflow = inngest.createFunction(
         },
       });
       // Cache async (don't await — non-blocking)
-      redis.set(CACHE_KEY, workflow, { ex: CACHE_TTL }).catch(() => {});
+      redis.set(CACHE_KEY, workflow, { ex: CACHE_TTL }).catch(() => { });
     }
 
     const execution = await prisma.execution.create({
@@ -132,6 +132,11 @@ export const executeWorkflow = inngest.createFunction(
         workflowId,
         inngestEventId,
         initialData: event.data.initialData ?? {},
+        // Persist the producer-side timestamp (if present) so we can later
+        // compute real queue-wait time: startedAt - eventCreatedAt.
+        eventCreatedAt: event.data.eventCreatedAt
+          ? new Date(event.data.eventCreatedAt)
+          : null,
       },
     });
 
@@ -488,12 +493,12 @@ export const executeShadowReplay = inngest.createFunction(
                 context,
                 step: {
                   run: async (_id: string, fn: () => Promise<unknown>) => fn(),
-                  sleep: async () => {},
+                  sleep: async () => { },
                   waitForEvent: async () => null,
-                  sendEvent: async () => {},
+                  sendEvent: async () => { },
                   invoke: async () => null,
                 } as unknown as typeof step,
-                publish: async () => {},
+                publish: async () => { },
                 mode: "shadow",
               }).finally(() => clearTimeout(timeoutHandle)),
               new Promise<never>((_, reject) => {

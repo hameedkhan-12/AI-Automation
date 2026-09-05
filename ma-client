@@ -1,0 +1,50 @@
+warning: in the working copy of 'src/app/api/internal/market-tick/__tests__/route.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/api/internal/market-tick/route.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/app/api/internal/market-tick/__tests__/route.test.ts b/src/app/api/internal/market-tick/__tests__/route.test.ts[m
+[1mindex 0f02aee..efee93b 100644[m
+[1m--- a/src/app/api/internal/market-tick/__tests__/route.test.ts[m
+[1m+++ b/src/app/api/internal/market-tick/__tests__/route.test.ts[m
+[36m@@ -95,6 +95,7 @@[m [mdescribe("POST /api/internal/market-tick — Authentication & Flow", () => {[m
+       name: "workflows/execute.workflow",[m
+       data: {[m
+         workflowId: "wf-1",[m
+[32m+[m[32m        eventCreatedAt: expect.any(Number),[m
+         initialData: { candle, symbol: "AAPL" },[m
+       },[m
+     });[m
+[36m@@ -119,6 +120,7 @@[m [mdescribe("POST /api/internal/market-tick — Authentication & Flow", () => {[m
+       name: "workflows/execute.workflow",[m
+       data: {[m
+         workflowId: "wf-2",[m
+[32m+[m[32m        eventCreatedAt: expect.any(Number),[m
+         initialData: { candle, symbol: "TSLA" },[m
+       },[m
+     });[m
+[1mdiff --git a/src/app/api/internal/market-tick/route.ts b/src/app/api/internal/market-tick/route.ts[m
+[1mindex cf64cb5..17a7a2e 100644[m
+[1m--- a/src/app/api/internal/market-tick/route.ts[m
+[1m+++ b/src/app/api/internal/market-tick/route.ts[m
+[36m@@ -49,6 +49,7 @@[m [mexport async function POST(req: NextRequest): Promise<NextResponse> {[m
+     name: "workflows/execute.workflow",[m
+     data: {[m
+       workflowId,[m
+[32m+[m[32m      eventCreatedAt: Date.now(),[m
+       initialData: { candle, symbol },[m
+     },[m
+   });[m
+[1mdiff --git a/src/inngest/utils.ts b/src/inngest/utils.ts[m
+[1mindex 861dbb4..d02726a 100644[m
+[1m--- a/src/inngest/utils.ts[m
+[1m+++ b/src/inngest/utils.ts[m
+[36m@@ -55,7 +55,10 @@[m [mexport const sendWorkflowExecution = async (data: {[m
+ }) => {[m
+   return inngest.send({[m
+     name: "workflows/execute.workflow",[m
+[31m-    data,[m
+[32m+[m[32m    data: {[m
+[32m+[m[32m      eventCreatedAt: Date.now(),[m
+[32m+[m[32m      ...data,[m
+[32m+[m[32m    },[m
+     id: createId(),[m
+   });[m
+ };[m
